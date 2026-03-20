@@ -131,10 +131,19 @@ export function createThemedStyles(c: ThemeColors) {
 
     gameRoot: {
       flex: 1,
-      backgroundColor: c.background,
+      position: 'relative',
+      overflow: 'hidden',
+      backgroundColor: c.sceneSkyBottom,
     },
-    gameMain: {
+    /** Full-bleed scene behind HUD / title / health (pointerEvents none). */
+    gameBackgroundLayer: {
+      ...StyleSheet.absoluteFillObject,
+      zIndex: 0,
+    },
+    /** Foreground dashboard chrome above the SVG. */
+    gameContentLayer: {
       flex: 1,
+      zIndex: 1,
       paddingHorizontal: Spacing.gameScreenPaddingX,
       paddingBottom: Spacing.lg,
     },
@@ -167,25 +176,15 @@ export function createThemedStyles(c: ThemeColors) {
       fontSize: FontSize.section,
       fontWeight: '700',
       textAlign: 'center',
-      marginBottom: Spacing.lg,
+      marginBottom: Spacing.md,
       color: c.text,
-    },
-    gameStage: {
-      alignSelf: 'center',
-      width: '100%',
-      maxWidth: Layout.gameStageMaxWidth,
-      aspectRatio: 1,
-      borderRadius: Radius.xxl,
-      borderWidth: 2,
-      borderStyle: 'dashed',
-      borderColor: c.gameStageBorder,
-      backgroundColor: c.gameStageBackground,
+      textShadowColor: 'rgba(0,0,0,0.25)',
+      textShadowOffset: { width: 0, height: 1 },
+      textShadowRadius: 3,
     },
     healthBlock: {
       width: '100%',
-      maxWidth: Layout.gameStageMaxWidth,
-      alignSelf: 'center',
-      marginTop: Spacing.xl,
+      marginTop: 'auto',
       gap: Spacing.sm,
     },
     healthBarLabel: {
@@ -207,6 +206,8 @@ export function createThemedStyles(c: ThemeColors) {
 
     gameTabBar: {
       flexDirection: 'row',
+      zIndex: 2,
+      elevation: 8,
       borderTopWidth: StyleSheet.hairlineWidth,
       borderTopColor: c.tabBarBorder,
       paddingTop: Spacing.tabBarPaddingTop,

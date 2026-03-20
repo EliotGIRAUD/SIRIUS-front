@@ -1,4 +1,5 @@
 import { GameTabBar } from '@/components/game-tab-bar';
+import { LayeredDogStage } from '@/components/layered-dog-stage';
 import { Layout } from '@/constants/layout';
 import { useDogStore } from '@/hooks/useDogStore';
 import { useThemedStyles } from '@/hooks/use-themed-styles';
@@ -29,8 +30,12 @@ export default function HomeScreen() {
   }, [health]);
 
   return (
-    <View style={[s.gameRoot, { paddingTop: insets.top }]}>
-      <View style={s.gameMain}>
+    <View style={s.gameRoot}>
+      <View style={s.gameBackgroundLayer} pointerEvents="none">
+        <LayeredDogStage colors={c} />
+      </View>
+
+      <View style={[s.gameContentLayer, { paddingTop: insets.top }]}>
         <View style={s.hudRow}>
           <View style={s.hudPill}>
             <MaterialIcons name="monetization-on" size={Layout.hudIconSize} color={c.coinAccent} />
@@ -44,8 +49,6 @@ export default function HomeScreen() {
 
         <Text style={s.dogTitle}>{dogName || 'Chien'}</Text>
 
-        <View style={s.gameStage} />
-
         <View style={s.healthBlock}>
           <Text style={s.healthBarLabel}>Santé</Text>
           <View style={s.healthTrack}>
@@ -53,6 +56,7 @@ export default function HomeScreen() {
           </View>
         </View>
       </View>
+
       <GameTabBar />
     </View>
   );

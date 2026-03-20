@@ -36,6 +36,19 @@ export const Palette = {
   templateParallaxLight: '#D0D0D0',
   templateParallaxIconMuted: '#808080',
 
+  /** Layered dashboard scene (SVG) — light mode. */
+  sceneSkyTop: '#38bdf8',
+  sceneSkyBottom: '#e0f2fe',
+  sceneHillFar: '#94a3b8',
+  sceneHillMid: '#78716c',
+  sceneGround: '#86efac',
+  sceneGroundShadow: '#4ade80',
+  /** Simple vector dog silhouette. */
+  dogVectorBody: '#a16207',
+  dogVectorBodyLight: '#ca8a04',
+  dogVectorSnout: '#fdba74',
+  dogVectorNose: '#451a03',
+
   dark: {
     primaryAsTint: '#ffffff',
     background: '#151718',
@@ -56,6 +69,17 @@ export const Palette = {
     buttonGhostText: '#9ca3af',
     link: '#6ec5e0',
     templateParallaxDark: '#353636',
+
+    sceneSkyTop: '#0e7490',
+    sceneSkyBottom: '#164e63',
+    sceneHillFar: '#475569',
+    sceneHillMid: '#334155',
+    sceneGround: '#166534',
+    sceneGroundShadow: '#14532d',
+    dogVectorBody: '#ca8a04',
+    dogVectorBodyLight: '#eab308',
+    dogVectorSnout: '#fde68a',
+    dogVectorNose: '#1c1917',
   },
 } as const;
 
@@ -98,6 +122,17 @@ function lightColors() {
 
     parallaxHeaderBackground: p.templateParallaxLight,
     parallaxIconMuted: p.templateParallaxIconMuted,
+
+    sceneSkyTop: p.sceneSkyTop,
+    sceneSkyBottom: p.sceneSkyBottom,
+    sceneHillFar: p.sceneHillFar,
+    sceneHillMid: p.sceneHillMid,
+    sceneGround: p.sceneGround,
+    sceneGroundShadow: p.sceneGroundShadow,
+    dogVectorBody: p.dogVectorBody,
+    dogVectorBodyLight: p.dogVectorBodyLight,
+    dogVectorSnout: p.dogVectorSnout,
+    dogVectorNose: p.dogVectorNose,
   } as const;
 }
 
@@ -140,6 +175,17 @@ function darkColors() {
 
     parallaxHeaderBackground: d.templateParallaxDark,
     parallaxIconMuted: p.templateParallaxIconMuted,
+
+    sceneSkyTop: d.sceneSkyTop,
+    sceneSkyBottom: d.sceneSkyBottom,
+    sceneHillFar: d.sceneHillFar,
+    sceneHillMid: d.sceneHillMid,
+    sceneGround: d.sceneGround,
+    sceneGroundShadow: d.sceneGroundShadow,
+    dogVectorBody: d.dogVectorBody,
+    dogVectorBodyLight: d.dogVectorBodyLight,
+    dogVectorSnout: d.dogVectorSnout,
+    dogVectorNose: d.dogVectorNose,
   } as const;
 }
 
