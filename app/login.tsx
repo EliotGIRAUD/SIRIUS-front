@@ -1,12 +1,14 @@
+import { useThemedStyles } from '@/hooks/use-themed-styles';
+import { useDogStore } from '@/hooks/useDogStore';
 import { getFirebaseAuth } from '@/lib/firebase';
-import { signInWithEmailAndPassword } from 'firebase/auth';
+import { cacheFirebaseUser, isSetupComplete } from '@/lib/local-session';
+import { onAuthStateChanged, signInWithEmailAndPassword } from 'firebase/auth';
 import { router } from 'expo-router';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
   Pressable,
-  StyleSheet,
   Text,
   TextInput,
   View,
@@ -16,6 +18,18 @@ export default function LoginScreen() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
+  const { colors: c, styles: s } = useThemedStyles();
+
+  useEffect(() => {
+    const auth = getFirebaseAuth();
+    if (!auth) return;
+    const unsub = onAuthStateChanged(auth, async (user) => {
+      if (!user) return;
+      const done = await isSetupComplete();
+      router.replace(done ? '/(tabs)' : '/setup-dog');
+    });
+    return unsub;
+  }, []);
 
   async function onLogin() {
     const auth = getFirebaseAuth();
@@ -25,8 +39,18 @@ export default function LoginScreen() {
     }
     setLoading(true);
     try {
-      await signInWithEmailAndPassword(auth, email.trim(), password);
-      router.replace('/setup-dog');
+      const cred = await signInWithEmailAndPassword(auth, email.trim(), password);
+      await cacheFirebaseUser(cred.user);
+      const apiOk = await useDogStore.getState().authApiLogin(email.trim());
+      if (!apiOk) {
+        Alert.alert(
+          'Serveur',
+          'Impossible de joindre POST /auth/login. Vérifie que l’API tourne et EXPO_PUBLIC_API_URL.',
+        );
+        return;
+      }
+      const done = await isSetupComplete();
+      router.replace(done ? '/(tabs)' : '/setup-dog');
     } catch (e) {
       Alert.alert('Connexion', e instanceof Error ? e.message : 'Erreur');
     } finally {
@@ -35,74 +59,40 @@ export default function LoginScreen() {
   }
 
   return (
-    <View style={styles.outer}>
-      <Text style={styles.title}>SIRIUS</Text>
+    <View style={s.formFlowScreen}>
+      <Text style={s.screenSectionTitle}>SIRIUS</Text>
+      <Text style={s.fieldLabel}>E-mail</Text>
       <TextInput
-        style={styles.input}
+        style={s.textField}
         placeholder="Email"
+        placeholderTextColor={c.textMuted}
         keyboardType="email-address"
         autoCapitalize="none"
         value={email}
         onChangeText={setEmail}
       />
+      <Text style={s.fieldLabel}>Mot de passe</Text>
       <TextInput
-        style={styles.input}
+        style={s.textField}
         placeholder="Mot de passe"
+        placeholderTextColor={c.textMuted}
         secureTextEntry
         value={password}
         onChangeText={setPassword}
       />
-      <Pressable style={[styles.btn, loading && styles.btnDisabled]} onPress={onLogin} disabled={loading}>
-        {loading ? <ActivityIndicator color="#fff" /> : <Text style={styles.btnText}>Se connecter</Text>}
+      <Pressable
+        style={[s.primaryButton, { backgroundColor: c.buttonPrimaryBackground }, loading && s.disabled]}
+        onPress={onLogin}
+        disabled={loading}>
+        {loading ? (
+          <ActivityIndicator color={c.buttonPrimaryText} />
+        ) : (
+          <Text style={[s.buttonLabel, { color: c.buttonPrimaryText }]}>Se connecter</Text>
+        )}
       </Pressable>
-      <Pressable style={[styles.btn, styles.btnGhost]} disabled>
-        <Text style={styles.btnGhostText}>S&apos;inscrire</Text>
+      <Pressable style={[s.outlineButton, s.disabled]} disabled>
+        <Text style={s.outlineButtonLabel}>S&apos;inscrire</Text>
       </Pressable>
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  outer: {
-    flex: 1,
-    justifyContent: 'center',
-    padding: 24,
-    gap: 12,
-  },
-  title: {
-    fontSize: 28,
-    fontWeight: '700',
-    textAlign: 'center',
-    marginBottom: 24,
-  },
-  input: {
-    borderWidth: 1,
-    borderColor: '#ccc',
-    borderRadius: 8,
-    padding: 12,
-    fontSize: 16,
-  },
-  btn: {
-    backgroundColor: '#2563eb',
-    padding: 14,
-    borderRadius: 10,
-    alignItems: 'center',
-  },
-  btnDisabled: {
-    opacity: 0.7,
-  },
-  btnText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  btnGhost: {
-    backgroundColor: '#e5e7eb',
-    opacity: 0.5,
-  },
-  btnGhostText: {
-    color: '#6b7280',
-    fontSize: 16,
-    fontWeight: '600',
-  },
-});

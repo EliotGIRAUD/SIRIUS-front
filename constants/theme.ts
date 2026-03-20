@@ -1,31 +1,155 @@
 /**
- * Below are the colors that are used in the app. The colors are defined in the light and dark mode.
- * There are many other ways to style your app. For example, [Nativewind](https://www.nativewind.dev/), [Tamagui](https://tamagui.dev/), [unistyles](https://reactnativeunistyles.vercel.app), etc.
+ * Global palette — single place to define brand and base colors.
+ * `Colors.light` / `Colors.dark` are derived from these for screens and components.
  */
 
 import { Platform } from 'react-native';
 
-const tintColorLight = '#0a7ea4';
-const tintColorDark = '#fff';
+export const Palette = {
+  /** Brand accent — all filled/outline CTAs derive from this via `buttonPrimary*`. */
+  primary: '#0a7ea4',
+  onPrimary: '#ffffff',
+  secondary: '#6366f1',
+  onSecondary: '#ffffff',
+  success: '#16a34a',
+  onSuccess: '#ffffff',
+
+  background: '#ffffff',
+  surface: '#f1f5f9',
+  surfaceElevated: '#ffffff',
+  text: '#11181C',
+  textMuted: '#687076',
+  textSubtle: '#64748b',
+  border: '#e2e8f0',
+  borderStrong: '#cbd5e1',
+
+  icon: '#687076',
+  health: '#22c55e',
+  healthTrack: '#e2e8f0',
+  healthLabel: '#334155',
+  coin: '#ca8a04',
+  gem: '#a855f7',
+
+  buttonGhostBg: '#e5e7eb',
+  buttonGhostText: '#6b7280',
+
+  templateParallaxLight: '#D0D0D0',
+  templateParallaxIconMuted: '#808080',
+
+  dark: {
+    primaryAsTint: '#ffffff',
+    background: '#151718',
+    surface: '#0f172a',
+    surfaceElevated: '#1e293b',
+    text: '#ECEDEE',
+    textMuted: '#9BA1A6',
+    textSubtle: '#94a3b8',
+    border: '#334155',
+    borderStrong: '#475569',
+    icon: '#9BA1A6',
+    health: '#4ade80',
+    healthTrack: '#334155',
+    healthLabel: '#cbd5e1',
+    coin: '#facc15',
+    gem: '#c084fc',
+    buttonGhostBg: '#374151',
+    buttonGhostText: '#9ca3af',
+    link: '#6ec5e0',
+    templateParallaxDark: '#353636',
+  },
+} as const;
+
+function lightColors() {
+  const p = Palette;
+  return {
+    text: p.text,
+    textMuted: p.textMuted,
+    background: p.background,
+    tint: p.primary,
+    link: p.primary,
+    icon: p.icon,
+    tabIconDefault: p.icon,
+    tabIconSelected: p.primary,
+
+    buttonPrimaryBackground: p.primary,
+    buttonPrimaryText: p.onPrimary,
+    buttonSecondaryBackground: p.primary,
+    buttonSecondaryText: p.onPrimary,
+    buttonPositiveBackground: p.primary,
+    buttonPositiveText: p.onPrimary,
+    buttonGhostBackground: p.buttonGhostBg,
+    buttonGhostText: p.buttonGhostText,
+    inputBorder: p.border,
+
+    /** Same as `background` — full-screen canvas (dashboard, settings, etc.). */
+    gameSurface: p.background,
+    gameStageBorder: p.borderStrong,
+    gameStageBackground: p.border,
+    hudPillBackground: p.surfaceElevated,
+    hudPillBorder: p.border,
+    healthTrack: p.healthTrack,
+    healthFill: p.health,
+    healthLabel: p.healthLabel,
+    coinAccent: p.coin,
+    gemAccent: p.gem,
+    tabBarBackground: p.surfaceElevated,
+    tabBarBorder: p.border,
+    tabBarLabel: p.textSubtle,
+
+    parallaxHeaderBackground: p.templateParallaxLight,
+    parallaxIconMuted: p.templateParallaxIconMuted,
+  } as const;
+}
+
+function darkColors() {
+  const p = Palette;
+  const d = p.dark;
+  return {
+    text: d.text,
+    textMuted: d.textMuted,
+    background: d.background,
+    tint: d.primaryAsTint,
+    link: d.link,
+    icon: d.icon,
+    tabIconDefault: d.icon,
+    tabIconSelected: d.primaryAsTint,
+
+    buttonPrimaryBackground: p.primary,
+    buttonPrimaryText: p.onPrimary,
+    buttonSecondaryBackground: p.primary,
+    buttonSecondaryText: p.onPrimary,
+    buttonPositiveBackground: p.primary,
+    buttonPositiveText: p.onPrimary,
+    buttonGhostBackground: d.buttonGhostBg,
+    buttonGhostText: d.buttonGhostText,
+    inputBorder: d.border,
+
+    gameSurface: d.background,
+    gameStageBorder: d.borderStrong,
+    gameStageBackground: d.surfaceElevated,
+    hudPillBackground: d.surfaceElevated,
+    hudPillBorder: d.border,
+    healthTrack: d.healthTrack,
+    healthFill: d.health,
+    healthLabel: d.healthLabel,
+    coinAccent: d.coin,
+    gemAccent: d.gem,
+    tabBarBackground: d.surfaceElevated,
+    tabBarBorder: d.border,
+    tabBarLabel: d.textSubtle,
+
+    parallaxHeaderBackground: d.templateParallaxDark,
+    parallaxIconMuted: p.templateParallaxIconMuted,
+  } as const;
+}
 
 export const Colors = {
-  light: {
-    text: '#11181C',
-    background: '#fff',
-    tint: tintColorLight,
-    icon: '#687076',
-    tabIconDefault: '#687076',
-    tabIconSelected: tintColorLight,
-  },
-  dark: {
-    text: '#ECEDEE',
-    background: '#151718',
-    tint: tintColorDark,
-    icon: '#9BA1A6',
-    tabIconDefault: '#9BA1A6',
-    tabIconSelected: tintColorDark,
-  },
+  light: lightColors(),
+  dark: darkColors(),
 };
+
+export type ColorScheme = keyof typeof Colors;
+export type ThemeColors = (typeof Colors)[ColorScheme];
 
 export const Fonts = Platform.select({
   ios: {

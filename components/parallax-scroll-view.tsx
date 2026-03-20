@@ -8,6 +8,7 @@ import Animated, {
 } from 'react-native-reanimated';
 
 import { ThemedView } from '@/components/themed-view';
+import { Layout } from '@/constants/layout';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useThemeColor } from '@/hooks/use-theme-color';
 
@@ -72,8 +73,8 @@ const styles = StyleSheet.create({
   },
   content: {
     flex: 1,
-    padding: 32,
-    gap: 16,
+    padding: Layout.parallaxContentPadding,
+    gap: Layout.parallaxContentGap,
     overflow: 'hidden',
   },
 });
