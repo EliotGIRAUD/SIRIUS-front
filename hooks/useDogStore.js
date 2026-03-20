@@ -3,35 +3,117 @@ import {
   setBackendUserId,
   updateUserSnapshot,
 } from '../lib/local-session';
+import { simulateDogStatsFromAnchor } from '../lib/dog-tick-simulation';
 import { create } from 'zustand';
 
 const API_URL = process.env.EXPO_PUBLIC_API_URL ?? 'http://localhost:3001';
 
-function mapDogPayload(data) {
-  const dogName =
-    (typeof data.name === 'string' && data.name) ||
-    (typeof data.nom === 'string' && data.nom) ||
-    '';
+/** @param {unknown} raw */
+function normalizeTickMeta(raw) {
+  if (!raw || typeof raw !== 'object') return null;
+  const m = /** @type {Record<string, unknown>} */ (raw);
   return {
-    hunger: Number(data.hunger ?? data.faim) || 0,
-    health: Number(data.health ?? data.sante) || 0,
-    maladie: Number(data.maladie) || 0,
-    wallet_gold: Number(data.wallet_soft_gold ?? data.wallet_gold ?? data.or) || 0,
-    wallet_gems: Number(data.wallet_hard_gems ?? data.wallet_gems ?? data.gemmes) || 0,
-    dogName,
-    breed: typeof data.race === 'string' ? data.race : '',
+    demoStepMs: Number(m.demoStepMs) || 10_000,
+    is_demo_mode: m.is_demo_mode === true,
+    difficulty_hardcore: m.difficulty_hardcore === true,
+    foodLossPerHour: Number(m.foodLossPerHour) || 0,
+    waterLossPerHour: Number(m.waterLossPerHour) || 0,
+    healthLossPerHourWhenDepleted: Number(m.healthLossPerHourWhenDepleted) || 0,
+    demoFoodLossPer10s: Number(m.demoFoodLossPer10s) || 0,
+    demoWaterLossPer10s: Number(m.demoWaterLossPer10s) || 0,
+    demoHealthLossPer10sWhenDepleted: Number(m.demoHealthLossPer10sWhenDepleted) || 0,
+  };
+}
+
+/** Nourriture / eau : 100 = plein (API `food` / `water`, anciens `hunger` / `thirst`). */
+function readFoodStat(obj) {
+  const v = Number(obj.food ?? obj.hunger ?? obj.faim);
+  return Number.isFinite(v) ? v : 0;
+}
+
+function readWaterStat(obj) {
+  const v = Number(obj.water ?? obj.thirst ?? obj.soif);
+  return Number.isFinite(v) ? v : 0;
+}
+
+/** @param {Record<string, unknown>} data */
+function mapInitDogResponse(data) {
+  const id = typeof data.id === 'string' ? data.id : '';
+  return {
+    dogId: id,
+    food: readFoodStat(data),
+    health: Number(data.health) || 0,
+    maladie: data.is_sick === true ? 100 : 0,
+    water: readWaterStat(data),
+    dogName:
+      (typeof data.name === 'string' && data.name.trim()) ||
+      (typeof data.nom === 'string' && data.nom.trim()) ||
+      '',
+    breed:
+      (typeof data.breed === 'string' && data.breed) ||
+      (typeof data.race === 'string' && data.race) ||
+      '',
+  };
+}
+
+/** @param {Record<string, unknown>} data */
+function mapDogsListPayload(data) {
+  const dogs = Array.isArray(data.dogs) ? data.dogs : [];
+  const primary = dogs[0] || null;
+  const wallet_gold = Number(data.wallet_soft_gold ?? data.wallet_gold ?? data.or) || 0;
+  const wallet_gems = Number(data.wallet_hard_gems ?? data.wallet_gems ?? data.gemmes) || 0;
+
+  if (!primary) {
+    return {
+      dogId: '',
+      food: 0,
+      health: 0,
+      maladie: 0,
+      water: 0,
+      wallet_gold,
+      wallet_gems,
+      dogName: '',
+      breed: '',
+      tickMeta: null,
+    };
+  }
+
+  const id = typeof primary.id === 'string' ? primary.id : '';
+  return {
+    dogId: id,
+    food: readFoodStat(primary),
+    health: Number(primary.health) || 0,
+    maladie: primary.is_sick === true ? 100 : 0,
+    water: readWaterStat(primary),
+    wallet_gold,
+    wallet_gems,
+    dogName:
+      (typeof primary.name === 'string' && primary.name.trim()) ||
+      (typeof primary.nom === 'string' && primary.nom.trim()) ||
+      '',
+    breed:
+      (typeof primary.breed === 'string' && primary.breed) ||
+      (typeof primary.race === 'string' && primary.race) ||
+      '',
+    tickMeta: normalizeTickMeta(primary.tick_meta),
   };
 }
 
 export const useDogStore = create((set, get) => ({
   userId: '',
-  hunger: 0,
+  dogId: '',
+  food: 0,
   health: 0,
   maladie: 0,
+  water: 0,
   wallet_gold: 0,
   wallet_gems: 0,
   dogName: '',
   breed: '',
+  /** From GET /dogs — drives local decay between syncs. */
+  tickMeta: null,
+  statsAnchor: null,
+  serverClockOffsetMs: 0,
 
   /** Restore userId from storage (cold start). */
   hydrateUserIdFromStorage: async () => {
@@ -42,8 +124,8 @@ export const useDogStore = create((set, get) => ({
   },
 
   /**
-   * POST /auth/login — stores the returned uid as userId for /dog/:userId and init-dog.
-   * Backend prototype expects { pseudo: string }.
+   * POST /auth/login — stores the returned uid as userId for /dogs/:userId and init-dog.
+   * Backend expects { pseudo: string }.
    */
   authApiLogin: async (pseudo) => {
     const trimmed = typeof pseudo === 'string' ? pseudo.trim() : '';
@@ -66,25 +148,87 @@ export const useDogStore = create((set, get) => ({
     }
   },
 
+  /**
+   * GET /dogs/:userId — user + primary dog stats + wallets.
+   * @returns {Promise<boolean|null>} true if at least one dog exists, false if none, null on network/other error
+   */
   fetchDog: async () => {
     const userId = get().userId;
-    if (!userId) return;
+    if (!userId) return null;
     try {
-      const res = await fetch(`${API_URL}/dog/${encodeURIComponent(userId)}`);
-      if (!res.ok) return;
+      const res = await fetch(`${API_URL}/dogs/${encodeURIComponent(userId)}`);
+      if (res.status === 404) {
+        set({
+          dogId: '',
+          food: 0,
+          health: 0,
+          maladie: 0,
+          water: 0,
+          dogName: '',
+          breed: '',
+          wallet_gold: 0,
+          wallet_gems: 0,
+          tickMeta: null,
+          statsAnchor: null,
+          serverClockOffsetMs: 0,
+        });
+        return false;
+      }
+      if (!res.ok) return null;
       const data = await res.json();
-      const mapped = mapDogPayload(data);
-      set(mapped);
+      const dogs = Array.isArray(data.dogs) ? data.dogs : [];
+      const mapped = mapDogsListPayload(data);
+      const smRaw = Number(data.server_now_ms);
+      const serverTimeMs = Number.isFinite(smRaw) ? smRaw : Date.now();
+      const receivedAt = Date.now();
+      const statsAnchor =
+        mapped.dogId && mapped.tickMeta
+          ? {
+              food: mapped.food,
+              water: mapped.water,
+              health: mapped.health,
+              serverTimeMs,
+            }
+          : null;
+      set({
+        ...mapped,
+        statsAnchor,
+        serverClockOffsetMs: serverTimeMs - receivedAt,
+      });
       if (mapped.dogName) {
         await updateUserSnapshot({ dogName: mapped.dogName });
+      } else {
+        await updateUserSnapshot({ dogName: '' });
       }
+      return dogs.length > 0;
     } catch {
-      /* ignore network errors */
+      return null;
     }
   },
 
+  /** Recompute food/water/health/maladie from last server anchor + clock offset (call ~1/s on home). */
+  applyLiveTick: () => {
+    const s = get();
+    if (!s.tickMeta || !s.statsAnchor) return;
+    const serverNow = Date.now() + s.serverClockOffsetMs;
+    const elapsed = Math.max(0, serverNow - s.statsAnchor.serverTimeMs);
+    const out = simulateDogStatsFromAnchor(
+      s.statsAnchor.food,
+      s.statsAnchor.water,
+      s.statsAnchor.health,
+      elapsed,
+      s.tickMeta,
+    );
+    set({
+      food: out.food,
+      water: out.water,
+      health: out.health,
+      maladie: out.maladie,
+    });
+  },
+
   /**
-   * POST /init-dog with { name, userId, race? } (not nom).
+   * POST /init-dog with { name, userId, breed? | race? }.
    */
   initDog: async (dogName, race) => {
     const userId = get().userId;
@@ -103,11 +247,12 @@ export const useDogStore = create((set, get) => ({
       });
       if (!res.ok) return false;
       const data = await res.json();
-      const mapped = mapDogPayload(data);
-      set(mapped);
+      const mapped = mapInitDogResponse(data);
+      set((state) => ({ ...state, ...mapped }));
       if (mapped.dogName) {
         await updateUserSnapshot({ dogName: mapped.dogName });
       }
+      await get().fetchDog();
       return true;
     } catch {
       return false;
@@ -118,12 +263,17 @@ export const useDogStore = create((set, get) => ({
   resetAfterLogout: () =>
     set({
       userId: '',
-      hunger: 0,
+      dogId: '',
+      food: 0,
       health: 0,
       maladie: 0,
+      water: 0,
       wallet_gold: 0,
       wallet_gems: 0,
       dogName: '',
       breed: '',
+      tickMeta: null,
+      statsAnchor: null,
+      serverClockOffsetMs: 0,
     }),
 }));
