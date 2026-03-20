@@ -8,21 +8,47 @@ import { create } from 'zustand';
 
 const API_URL = process.env.EXPO_PUBLIC_API_URL ?? 'http://localhost:3001';
 
-/** @param {unknown} raw */
+/** Default rates (golden_retriever–class profile) if API omits zeros. */
 function normalizeTickMeta(raw) {
-  if (!raw || typeof raw !== 'object') return null;
+  if (raw == null || typeof raw !== 'object') return null;
   const m = /** @type {Record<string, unknown>} */ (raw);
   return {
     demoStepMs: Number(m.demoStepMs) || 10_000,
     is_demo_mode: m.is_demo_mode === true,
     difficulty_hardcore: m.difficulty_hardcore === true,
-    foodLossPerHour: Number(m.foodLossPerHour) || 0,
-    waterLossPerHour: Number(m.waterLossPerHour) || 0,
-    healthLossPerHourWhenDepleted: Number(m.healthLossPerHourWhenDepleted) || 0,
-    demoFoodLossPer10s: Number(m.demoFoodLossPer10s) || 0,
-    demoWaterLossPer10s: Number(m.demoWaterLossPer10s) || 0,
-    demoHealthLossPer10sWhenDepleted: Number(m.demoHealthLossPer10sWhenDepleted) || 0,
+    foodLossPerHour: Number(m.foodLossPerHour) || 5,
+    waterLossPerHour: Number(m.waterLossPerHour) || 7,
+    healthLossPerHourWhenDepleted: Number(m.healthLossPerHourWhenDepleted) || 10,
+    demoFoodLossPer10s: Number(m.demoFoodLossPer10s) || 1,
+    demoWaterLossPer10s: Number(m.demoWaterLossPer10s) || 1,
+    demoHealthLossPer10sWhenDepleted: Number(m.demoHealthLossPer10sWhenDepleted) || 2,
   };
+}
+
+/** When `tick_meta` is missing from JSON (older server). */
+function buildFallbackTickMeta(/** @type {Record<string, unknown>} */ data, primary) {
+  const breed =
+    primary && typeof primary.breed === 'string' ? primary.breed : 'golden_retriever';
+  const b = breed.toLowerCase().replace(/\s+/g, '_');
+  const water = b === 'golden_retriever' ? 7 : 5;
+  return normalizeTickMeta({
+    demoStepMs: 10_000,
+    is_demo_mode: data.is_demo_mode === true,
+    difficulty_hardcore: data.difficulty_mode === 'hardcore',
+    foodLossPerHour: 5,
+    waterLossPerHour: water,
+    healthLossPerHourWhenDepleted: 10,
+    demoFoodLossPer10s: 1,
+    demoWaterLossPer10s: 1,
+    demoHealthLossPer10sWhenDepleted: 2,
+  });
+}
+
+function resolveTickMeta(data, primary) {
+  if (!primary) return null;
+  const fromApi = normalizeTickMeta(primary.tick_meta);
+  if (fromApi) return fromApi;
+  return buildFallbackTickMeta(data, primary);
 }
 
 /** Nourriture / eau : 100 = plein (API `food` / `water`, anciens `hunger` / `thirst`). */
@@ -95,7 +121,7 @@ function mapDogsListPayload(data) {
       (typeof primary.breed === 'string' && primary.breed) ||
       (typeof primary.race === 'string' && primary.race) ||
       '',
-    tickMeta: normalizeTickMeta(primary.tick_meta),
+    tickMeta: resolveTickMeta(data, primary),
   };
 }
 
@@ -195,6 +221,7 @@ export const useDogStore = create((set, get) => ({
         statsAnchor,
         serverClockOffsetMs: serverTimeMs - receivedAt,
       });
+      get().applyLiveTick();
       if (mapped.dogName) {
         await updateUserSnapshot({ dogName: mapped.dogName });
       } else {

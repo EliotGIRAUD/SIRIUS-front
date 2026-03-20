@@ -2,7 +2,7 @@ import { useDogStore } from '@/hooks/useDogStore';
 import { useEffect } from 'react';
 
 /** How often the UI recomputes local decay between server syncs. */
-const LIVE_TICK_MS = 1000;
+const LIVE_TICK_MS = 500;
 
 /**
  * Smooth food / water / health / maladie between throttled GET /dogs syncs.
