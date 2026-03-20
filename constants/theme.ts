@@ -3,83 +3,84 @@
  * `Colors.light` / `Colors.dark` are derived from these for screens and components.
  */
 
-import { Platform } from 'react-native';
+import { Platform } from "react-native";
 
 export const Palette = {
   /** Brand accent — all filled/outline CTAs derive from this via `buttonPrimary*`. */
-  primary: '#0a7ea4',
-  onPrimary: '#ffffff',
-  secondary: '#6366f1',
-  onSecondary: '#ffffff',
-  success: '#16a34a',
-  onSuccess: '#ffffff',
+  primary: "#0a7ea4",
+  onPrimary: "#ffffff",
+  secondary: "#6366f1",
+  onSecondary: "#ffffff",
+  success: "#16a34a",
+  onSuccess: "#ffffff",
 
-  background: '#ffffff',
-  surface: '#f1f5f9',
-  surfaceElevated: '#ffffff',
-  text: '#11181C',
-  textMuted: '#687076',
-  textSubtle: '#64748b',
-  border: '#e2e8f0',
-  borderStrong: '#cbd5e1',
+  background: "#ffffff",
+  surface: "#f1f5f9",
+  surfaceElevated: "#ffffff",
+  text: "#11181C",
+  textMuted: "#687076",
+  textSubtle: "#64748b",
+  border: "#e2e8f0",
+  borderStrong: "#cbd5e1",
 
-  icon: '#687076',
-  health: '#22c55e',
-  healthTrack: '#e2e8f0',
-  healthLabel: '#334155',
-  coin: '#ca8a04',
-  gem: '#a855f7',
+  icon: "#687076",
+  health: "#22c55e",
+  healthTrack: "#e2e8f0",
+  healthLabel: "#334155",
+  coin: "#ca8a04",
+  gem: "#a855f7",
 
-  buttonGhostBg: '#e5e7eb',
-  buttonGhostText: '#6b7280',
+  buttonGhostBg: "#e5e7eb",
+  buttonGhostText: "#6b7280",
 
-  templateParallaxLight: '#D0D0D0',
-  templateParallaxIconMuted: '#808080',
+  templateParallaxLight: "#D0D0D0",
+  templateParallaxIconMuted: "#808080",
 
   /** Layered dashboard scene (SVG) — light mode. */
-  sceneSkyTop: '#38bdf8',
-  sceneSkyBottom: '#e0f2fe',
-  sceneHillFar: '#94a3b8',
-  sceneHillMid: '#78716c',
-  sceneGround: '#86efac',
-  sceneGroundShadow: '#4ade80',
+  sceneSkyTop: "#38bdf8",
+  sceneSkyBottom: "#e0f2fe",
+  sceneHillFar: "#94a3b8",
+  sceneHillMid: "#78716c",
+  sceneGround: "#86efac",
+  sceneGroundShadow: "#4ade80",
   /** Simple vector dog silhouette. */
-  dogVectorBody: '#a16207',
-  dogVectorBodyLight: '#ca8a04',
-  dogVectorSnout: '#fdba74',
-  dogVectorNose: '#451a03',
-
+  dogVectorBody: "#a16207",
+  dogVectorBodyLight: "#ca8a04",
+  dogVectorSnout: "#fdba74",
+  dogVectorNose: "#451a03",
+  dogVectorTongue: "#fdba74",
   dark: {
-    primaryAsTint: '#ffffff',
-    background: '#151718',
-    surface: '#0f172a',
-    surfaceElevated: '#1e293b',
-    text: '#ECEDEE',
-    textMuted: '#9BA1A6',
-    textSubtle: '#94a3b8',
-    border: '#334155',
-    borderStrong: '#475569',
-    icon: '#9BA1A6',
-    health: '#4ade80',
-    healthTrack: '#334155',
-    healthLabel: '#cbd5e1',
-    coin: '#facc15',
-    gem: '#c084fc',
-    buttonGhostBg: '#374151',
-    buttonGhostText: '#9ca3af',
-    link: '#6ec5e0',
-    templateParallaxDark: '#353636',
+    primaryAsTint: "#ffffff",
+    background: "#151718",
+    surface: "#0f172a",
+    surfaceElevated: "#1e293b",
+    text: "#ECEDEE",
+    textMuted: "#9BA1A6",
+    textSubtle: "#94a3b8",
+    border: "#334155",
+    borderStrong: "#475569",
+    icon: "#9BA1A6",
+    health: "#4ade80",
+    healthTrack: "#334155",
+    healthLabel: "#cbd5e1",
+    coin: "#facc15",
+    gem: "#c084fc",
+    buttonGhostBg: "#374151",
+    buttonGhostText: "#9ca3af",
+    link: "#6ec5e0",
+    templateParallaxDark: "#353636",
 
-    sceneSkyTop: '#0e7490',
-    sceneSkyBottom: '#164e63',
-    sceneHillFar: '#475569',
-    sceneHillMid: '#334155',
-    sceneGround: '#166534',
-    sceneGroundShadow: '#14532d',
-    dogVectorBody: '#ca8a04',
-    dogVectorBodyLight: '#eab308',
-    dogVectorSnout: '#fde68a',
-    dogVectorNose: '#1c1917',
+    sceneSkyTop: "#0e7490",
+    sceneSkyBottom: "#164e63",
+    sceneHillFar: "#475569",
+    sceneHillMid: "#334155",
+    sceneGround: "#166534",
+    sceneGroundShadow: "#14532d",
+    dogVectorBody: "#ca8a04",
+    dogVectorBodyLight: "#eab308",
+    dogVectorSnout: "#fde68a",
+    dogVectorNose: "#1c1917",
+    dogVectorTongue: "#fd8ae8",
   },
 } as const;
 
@@ -133,6 +134,7 @@ function lightColors() {
     dogVectorBodyLight: p.dogVectorBodyLight,
     dogVectorSnout: p.dogVectorSnout,
     dogVectorNose: p.dogVectorNose,
+    dogVectorTongue: p.dogVectorTongue,
   } as const;
 }
 
@@ -186,6 +188,7 @@ function darkColors() {
     dogVectorBodyLight: d.dogVectorBodyLight,
     dogVectorSnout: d.dogVectorSnout,
     dogVectorNose: d.dogVectorNose,
+    dogVectorTongue: d.dogVectorTongue,
   } as const;
 }
 
@@ -200,19 +203,19 @@ export type ThemeColors = (typeof Colors)[ColorScheme];
 export const Fonts = Platform.select({
   ios: {
     /** iOS `UIFontDescriptorSystemDesignDefault` */
-    sans: 'system-ui',
+    sans: "system-ui",
     /** iOS `UIFontDescriptorSystemDesignSerif` */
-    serif: 'ui-serif',
+    serif: "ui-serif",
     /** iOS `UIFontDescriptorSystemDesignRounded` */
-    rounded: 'ui-rounded',
+    rounded: "ui-rounded",
     /** iOS `UIFontDescriptorSystemDesignMonospaced` */
-    mono: 'ui-monospace',
+    mono: "ui-monospace",
   },
   default: {
-    sans: 'normal',
-    serif: 'serif',
-    rounded: 'normal',
-    mono: 'monospace',
+    sans: "normal",
+    serif: "serif",
+    rounded: "normal",
+    mono: "monospace",
   },
   web: {
     sans: "system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif",
