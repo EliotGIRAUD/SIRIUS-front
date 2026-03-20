@@ -185,6 +185,9 @@ export function createThemedStyles(c: ThemeColors) {
     healthBlock: {
       width: '100%',
       marginTop: 'auto',
+      gap: Spacing.md,
+    },
+    statBarGroup: {
       gap: Spacing.sm,
     },
     healthBarLabel: {
@@ -202,6 +205,11 @@ export function createThemedStyles(c: ThemeColors) {
       height: '100%',
       borderRadius: Layout.healthBarRadius,
       backgroundColor: c.healthFill,
+    },
+    foodFill: {
+      height: '100%',
+      borderRadius: Layout.healthBarRadius,
+      backgroundColor: c.foodBarFill,
     },
 
     gameTabBar: {

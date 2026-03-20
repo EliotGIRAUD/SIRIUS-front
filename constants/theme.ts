@@ -29,6 +29,8 @@ export const Palette = {
   healthLabel: "#334155",
   coin: "#ca8a04",
   gem: "#a855f7",
+  /** Food / faim bar fill on dashboard. */
+  foodBarFill: "#ea580c",
 
   buttonGhostBg: "#e5e7eb",
   buttonGhostText: "#6b7280",
@@ -65,6 +67,7 @@ export const Palette = {
     healthLabel: "#cbd5e1",
     coin: "#facc15",
     gem: "#c084fc",
+    foodBarFill: "#fb923c",
     buttonGhostBg: "#374151",
     buttonGhostText: "#9ca3af",
     link: "#6ec5e0",
@@ -117,6 +120,7 @@ function lightColors() {
     healthLabel: p.healthLabel,
     coinAccent: p.coin,
     gemAccent: p.gem,
+    foodBarFill: p.foodBarFill,
     tabBarBackground: p.surfaceElevated,
     tabBarBorder: p.border,
     tabBarLabel: p.textSubtle,
@@ -171,6 +175,7 @@ function darkColors() {
     healthLabel: d.healthLabel,
     coinAccent: d.coin,
     gemAccent: d.gem,
+    foodBarFill: d.foodBarFill,
     tabBarBackground: d.surfaceElevated,
     tabBarBorder: d.border,
     tabBarLabel: d.textSubtle,
