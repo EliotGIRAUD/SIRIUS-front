@@ -54,7 +54,7 @@ export async function updateUserSnapshot(partial: Partial<UserSnapshot>) {
   await AsyncStorage.setItem(KEYS.user, JSON.stringify({ ...prev, ...partial }));
 }
 
-/** UID returned by POST /auth/login — used for GET /dog/:userId and init-dog. */
+/** UID returned by POST /auth/login — used for GET /dogs/:userId and init-dog. */
 export async function setBackendUserId(uid: string) {
   await AsyncStorage.setItem(KEYS.backendUid, uid);
 }

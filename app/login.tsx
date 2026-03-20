@@ -1,7 +1,7 @@
 import { useThemedStyles } from '@/hooks/use-themed-styles';
 import { useDogStore } from '@/hooks/useDogStore';
 import { getFirebaseAuth } from '@/lib/firebase';
-import { cacheFirebaseUser, isSetupComplete } from '@/lib/local-session';
+import { cacheFirebaseUser, isSetupComplete, setSetupComplete } from '@/lib/local-session';
 import { onAuthStateChanged, signInWithEmailAndPassword } from 'firebase/auth';
 import { router } from 'expo-router';
 import { useEffect, useState } from 'react';
@@ -25,8 +25,19 @@ export default function LoginScreen() {
     if (!auth) return;
     const unsub = onAuthStateChanged(auth, async (user) => {
       if (!user) return;
-      const done = await isSetupComplete();
-      router.replace(done ? '/(tabs)' : '/setup-dog');
+      await cacheFirebaseUser(user);
+      await useDogStore.getState().hydrateUserIdFromStorage();
+      if (!useDogStore.getState().userId) {
+        const pseudo = user.email?.trim() || user.uid;
+        if (pseudo) await useDogStore.getState().authApiLogin(pseudo);
+      }
+      const hasDog = await useDogStore.getState().fetchDog();
+      if (hasDog === null) {
+        router.replace((await isSetupComplete()) ? '/(tabs)' : '/setup-dog');
+      } else {
+        await setSetupComplete(hasDog);
+        router.replace(hasDog ? '/(tabs)' : '/setup-dog');
+      }
     });
     return unsub;
   }, []);
@@ -49,8 +60,13 @@ export default function LoginScreen() {
         );
         return;
       }
-      const done = await isSetupComplete();
-      router.replace(done ? '/(tabs)' : '/setup-dog');
+      const hasDog = await useDogStore.getState().fetchDog();
+      if (hasDog === null) {
+        router.replace((await isSetupComplete()) ? '/(tabs)' : '/setup-dog');
+      } else {
+        await setSetupComplete(hasDog);
+        router.replace(hasDog ? '/(tabs)' : '/setup-dog');
+      }
     } catch (e) {
       Alert.alert('Connexion', e instanceof Error ? e.message : 'Erreur');
     } finally {

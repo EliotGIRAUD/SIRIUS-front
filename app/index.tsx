@@ -1,7 +1,7 @@
 import { useDogStore } from '@/hooks/useDogStore';
 import { useThemedStyles } from '@/hooks/use-themed-styles';
 import { getFirebaseAuth } from '@/lib/firebase';
-import { cacheFirebaseUser, isSetupComplete } from '@/lib/local-session';
+import { cacheFirebaseUser, isSetupComplete, setSetupComplete } from '@/lib/local-session';
 import { Redirect } from 'expo-router';
 import { onAuthStateChanged } from 'firebase/auth';
 import { useEffect, useState } from 'react';
@@ -33,8 +33,15 @@ export default function Index() {
           await useDogStore.getState().authApiLogin(pseudo);
         }
       }
-      const done = await isSetupComplete();
-      setGate(done ? 'tabs' : 'setup');
+      const hasDog = await useDogStore.getState().fetchDog();
+      let next: Gate;
+      if (hasDog === null) {
+        next = (await isSetupComplete()) ? 'tabs' : 'setup';
+      } else {
+        await setSetupComplete(hasDog);
+        next = hasDog ? 'tabs' : 'setup';
+      }
+      setGate(next);
     });
 
     return unsub;

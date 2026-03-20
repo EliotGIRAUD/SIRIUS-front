@@ -59,6 +59,11 @@ export const Layout = {
   setupImageHeight: 220,
   healthBarHeight: 14,
   healthBarRadius: 7,
+  /** Left HUD circular stat rings (Santé / Faim / Eau / Maladie). */
+  statRingSize: 56,
+  statRingStroke: 5,
+  /** Reconcile with server while home is open (client simulates between polls). */
+  dogDashboardPollMs: 120_000,
   hudIconSize: 22,
   tabBarIconSize: 26,
   parallaxContentPadding: 32,

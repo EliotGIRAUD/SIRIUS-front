@@ -182,26 +182,46 @@ export function createThemedStyles(c: ThemeColors) {
       textShadowOffset: { width: 0, height: 1 },
       textShadowRadius: 3,
     },
-    healthBlock: {
-      width: '100%',
-      marginTop: 'auto',
-      gap: Spacing.sm,
+    /** Fills space under title; left column holds circular stat HUD. */
+    gameMainBody: {
+      flex: 1,
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'flex-start',
     },
-    healthBarLabel: {
+    statRingsColumn: {
+      gap: Spacing.lg,
+      alignItems: 'center',
+    },
+    statRingItem: {
+      alignItems: 'center',
+      gap: Spacing.xs,
+    },
+    statRingWrap: {
+      width: Layout.statRingSize,
+      height: Layout.statRingSize,
+      justifyContent: 'center',
+      alignItems: 'center',
+    },
+    statRingPercent: {
+      position: 'absolute',
       fontSize: FontSize.callout,
+      fontWeight: '700',
+      color: c.healthLabel,
+      textAlign: 'center',
+      textShadowColor: 'rgba(0,0,0,0.45)',
+      textShadowOffset: { width: 0, height: 1 },
+      textShadowRadius: 2,
+    },
+    statRingLabel: {
+      fontSize: FontSize.caption,
       fontWeight: '600',
       color: c.healthLabel,
-    },
-    healthTrack: {
-      height: Layout.healthBarHeight,
-      borderRadius: Layout.healthBarRadius,
-      overflow: 'hidden',
-      backgroundColor: c.healthTrack,
-    },
-    healthFill: {
-      height: '100%',
-      borderRadius: Layout.healthBarRadius,
-      backgroundColor: c.healthFill,
+      textAlign: 'center',
+      maxWidth: Layout.statRingSize + Spacing.md,
+      textShadowColor: 'rgba(0,0,0,0.35)',
+      textShadowOffset: { width: 0, height: 1 },
+      textShadowRadius: 2,
     },
 
     gameTabBar: {
