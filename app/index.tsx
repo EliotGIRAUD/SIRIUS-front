@@ -28,10 +28,8 @@ export default function Index() {
       await cacheFirebaseUser(user);
       await useDogStore.getState().hydrateUserIdFromStorage();
       if (!useDogStore.getState().userId) {
-        const pseudo = user.email?.trim() || user.uid;
-        if (pseudo) {
-          await useDogStore.getState().authApiLogin(pseudo);
-        }
+        const idToken = await user.getIdToken();
+        await useDogStore.getState().authApiLogin({ idToken });
       }
       const hasDog = await useDogStore.getState().fetchDog();
       let next: Gate;
@@ -63,7 +61,7 @@ export default function Index() {
   }
 
   if (gate === 'setup') {
-    return <Redirect href="/setup-dog" />;
+    return <Redirect href="/checkup" />;
   }
 
   return <Redirect href="/(tabs)" />;

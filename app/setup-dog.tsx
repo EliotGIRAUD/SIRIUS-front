@@ -15,9 +15,15 @@ import {
 
 const GOLDEN_URL =
   'https://images.unsplash.com/photo-1552053831-71594a27632d?w=600&q=80';
+const BREEDS = [
+  { id: 'golden_retriever', label: 'Golden Retriever' },
+  { id: 'husky', label: 'Husky' },
+  { id: 'beagle', label: 'Beagle' },
+];
 
 export default function SetupDogScreen() {
   const [name, setName] = useState('');
+  const [breed, setBreed] = useState(BREEDS[0].id);
   const [busy, setBusy] = useState(false);
   const initDog = useDogStore((s) => s.initDog);
   const { colors: c, styles: s } = useThemedStyles();
@@ -30,7 +36,7 @@ export default function SetupDogScreen() {
     }
     setBusy(true);
     try {
-      const ok = await initDog(nom, 'Golden Retriever');
+      const ok = await initDog(nom, breed);
       if (!ok) {
         Alert.alert('Erreur', 'POST /init-dog a échoué');
         return;
@@ -46,6 +52,29 @@ export default function SetupDogScreen() {
     <View style={s.formFlowScreen}>
       <Text style={s.screenSectionTitle}>Ton compagnon</Text>
       <Image source={{ uri: GOLDEN_URL }} style={s.setupHeroImage} contentFit="cover" />
+      <Text style={s.fieldLabel}>Choisis une race</Text>
+      <View style={{ width: '100%', gap: 10, marginBottom: 10 }}>
+        {BREEDS.map((b) => {
+          const active = breed === b.id;
+          return (
+            <Pressable
+              key={b.id}
+              style={{
+                borderRadius: 12,
+                borderWidth: 1,
+                borderColor: active ? c.buttonPrimaryBackground : c.inputBorder,
+                backgroundColor: active ? c.buttonPrimaryBackground : c.background,
+                paddingVertical: 10,
+                paddingHorizontal: 12,
+              }}
+              onPress={() => setBreed(b.id)}>
+              <Text style={{ color: active ? c.buttonPrimaryText : c.text, fontWeight: '600' }}>
+                {b.label}
+              </Text>
+            </Pressable>
+          );
+        })}
+      </View>
       <Text style={s.fieldLabel}>Nom du chien</Text>
       <TextInput
         style={s.textField}

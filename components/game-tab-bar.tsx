@@ -13,7 +13,8 @@ export function GameTabBar() {
   const { colors: c, styles: s } = useThemedStyles();
 
   const isSettings = pathname.includes('settings');
-  const isHome = !isSettings;
+  const isShop = pathname.includes('shop');
+  const isHome = !isSettings && !isShop;
 
   const goHome = () => {
     if (process.env.EXPO_OS === 'ios') {
@@ -29,6 +30,13 @@ export function GameTabBar() {
     router.replace('/(tabs)/settings' as Href);
   };
 
+  const goShop = () => {
+    if (process.env.EXPO_OS === 'ios') {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    }
+    router.replace('/(tabs)/shop' as Href);
+  };
+
   return (
     <View style={[s.gameTabBar, { paddingBottom: Math.max(insets.bottom, Spacing.safeBottomMin) }]}>
       <Pressable style={s.gameTabItem} onPress={goHome} accessibilityRole="button" accessibilityLabel="Accueil">
@@ -38,6 +46,14 @@ export function GameTabBar() {
           color={isHome ? c.buttonPrimaryBackground : c.tabBarLabel}
         />
         <Text style={[s.gameTabLabel, { color: isHome ? c.buttonPrimaryBackground : c.tabBarLabel }]}>Accueil</Text>
+      </Pressable>
+      <Pressable style={s.gameTabItem} onPress={goShop} accessibilityRole="button" accessibilityLabel="Boutique">
+        <IconSymbol
+          name="cart.fill"
+          size={Layout.tabBarIconSize}
+          color={isShop ? c.buttonPrimaryBackground : c.tabBarLabel}
+        />
+        <Text style={[s.gameTabLabel, { color: isShop ? c.buttonPrimaryBackground : c.tabBarLabel }]}>Boutique</Text>
       </Pressable>
       <Pressable
         style={s.gameTabItem}

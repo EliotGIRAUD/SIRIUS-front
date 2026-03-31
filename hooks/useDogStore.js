@@ -62,6 +62,14 @@ function mapDogsListPayload(data) {
   const primary = dogs[0] || null;
   const wallet_gold = Number(data.wallet_soft_gold ?? data.wallet_gold ?? data.or) || 0;
   const wallet_gems = Number(data.wallet_hard_gems ?? data.wallet_gems ?? data.gemmes) || 0;
+  const inventory = data && typeof data.inventory === 'object' ? data.inventory : null;
+  const items =
+    inventory && typeof inventory.items === 'object' && inventory.items
+      ? inventory.items
+      : {};
+  const croquettes = Math.max(0, Number(items.croquettes) || 0);
+  const water_bottle = Math.max(0, Number(items.water_bottle) || 0);
+  const unlocked_skins = Array.isArray(data.unlocked_skins) ? data.unlocked_skins.filter((x) => typeof x === 'string') : [];
 
   if (!primary) {
     return {
@@ -72,8 +80,13 @@ function mapDogsListPayload(data) {
       water: 0,
       wallet_gold,
       wallet_gems,
+      inventory: { croquettes, water_bottle },
+      unlocked_skins,
+      active_skin_id: '',
       dogName: '',
       breed: '',
+      difficulty_mode: typeof data.difficulty_mode === 'string' ? data.difficulty_mode : 'normal',
+      is_demo_mode: data.is_demo_mode === true,
       tickMeta: null,
     };
   }
@@ -87,6 +100,9 @@ function mapDogsListPayload(data) {
     water: readWaterStat(primary),
     wallet_gold,
     wallet_gems,
+    inventory: { croquettes, water_bottle },
+    unlocked_skins,
+    active_skin_id: typeof primary.active_skin_id === 'string' ? primary.active_skin_id : '',
     dogName:
       (typeof primary.name === 'string' && primary.name.trim()) ||
       (typeof primary.nom === 'string' && primary.nom.trim()) ||
@@ -95,6 +111,8 @@ function mapDogsListPayload(data) {
       (typeof primary.breed === 'string' && primary.breed) ||
       (typeof primary.race === 'string' && primary.race) ||
       '',
+    difficulty_mode: typeof data.difficulty_mode === 'string' ? data.difficulty_mode : 'normal',
+    is_demo_mode: data.is_demo_mode === true,
     tickMeta: normalizeTickMeta(primary.tick_meta),
   };
 }
@@ -108,6 +126,11 @@ export const useDogStore = create((set, get) => ({
   water: 0,
   wallet_gold: 0,
   wallet_gems: 0,
+  inventory: { croquettes: 0, water_bottle: 0 },
+  unlocked_skins: [],
+  active_skin_id: '',
+  difficulty_mode: 'normal',
+  is_demo_mode: false,
   dogName: '',
   breed: '',
   /** From GET /dogs — drives local decay between syncs. */
@@ -125,16 +148,47 @@ export const useDogStore = create((set, get) => ({
 
   /**
    * POST /auth/login — stores the returned uid as userId for /dogs/:userId and init-dog.
-   * Backend expects { pseudo: string }.
    */
-  authApiLogin: async (pseudo) => {
-    const trimmed = typeof pseudo === 'string' ? pseudo.trim() : '';
-    if (!trimmed) return false;
+  authApiLogin: async ({ idToken, pseudo } = {}) => {
+    const token = typeof idToken === 'string' ? idToken.trim() : '';
+    const pseudoTrimmed = typeof pseudo === 'string' ? pseudo.trim() : '';
+    if (!token) return false;
     try {
       const res = await fetch(`${API_URL}/auth/login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ pseudo: trimmed }),
+        body: JSON.stringify({
+          idToken: token,
+          ...(pseudoTrimmed ? { pseudo: pseudoTrimmed } : {}),
+        }),
+      });
+      if (!res.ok) return false;
+      const data = await res.json();
+      const uid = typeof data.uid === 'string' ? data.uid.trim() : '';
+      if (!uid) return false;
+      set({ userId: uid });
+      await setBackendUserId(uid);
+      return true;
+    } catch {
+      return false;
+    }
+  },
+
+  /**
+   * POST /auth/register — stores the returned uid as userId for /dogs/:userId and init-dog.
+   */
+  authApiRegister: async ({ idToken, pseudo } = {}) => {
+    const token = typeof idToken === 'string' ? idToken.trim() : '';
+    const pseudoTrimmed = typeof pseudo === 'string' ? pseudo.trim() : '';
+    if (!token) return false;
+    try {
+      const res = await fetch(`${API_URL}/auth/register`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          idToken: token,
+          ...(pseudoTrimmed ? { pseudo: pseudoTrimmed } : {}),
+        }),
       });
       if (!res.ok) return false;
       const data = await res.json();
@@ -168,6 +222,11 @@ export const useDogStore = create((set, get) => ({
           breed: '',
           wallet_gold: 0,
           wallet_gems: 0,
+          inventory: { croquettes: 0, water_bottle: 0 },
+          unlocked_skins: [],
+          active_skin_id: '',
+          difficulty_mode: 'normal',
+          is_demo_mode: false,
           tickMeta: null,
           statsAnchor: null,
           serverClockOffsetMs: 0,
@@ -259,6 +318,121 @@ export const useDogStore = create((set, get) => ({
     }
   },
 
+  feedDog: async () => {
+    const userId = get().userId;
+    const dogId = get().dogId;
+    if (!userId || !dogId) return false;
+    try {
+      const res = await fetch(`${API_URL}/interact/feed`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId, dogId }),
+      });
+      if (!res.ok) return false;
+      await get().fetchDog();
+      return true;
+    } catch {
+      return false;
+    }
+  },
+
+  buyConsumable: async (item, quantity = 1) => {
+    const userId = get().userId;
+    if (!userId) return { ok: false, error: 'userId manquant' };
+    try {
+      const res = await fetch(`${API_URL}/shop/buy`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId, item, quantity }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        return { ok: false, error: typeof data.error === 'string' ? data.error : 'Achat impossible' };
+      }
+      await get().fetchDog();
+      return { ok: true, data };
+    } catch {
+      return { ok: false, error: 'Erreur réseau' };
+    }
+  },
+
+  buySkin: async (skinId) => {
+    const userId = get().userId;
+    if (!userId) return { ok: false, error: 'userId manquant' };
+    const sid = typeof skinId === 'string' ? skinId.trim() : '';
+    if (!sid) return { ok: false, error: 'skinId manquant' };
+    try {
+      const res = await fetch(`${API_URL}/shop/buy-skin`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId, skinId: sid }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        return { ok: false, error: typeof data.error === 'string' ? data.error : 'Achat impossible' };
+      }
+      await get().fetchDog();
+      return { ok: true, data };
+    } catch {
+      return { ok: false, error: 'Erreur réseau' };
+    }
+  },
+
+  equipSkin: async (skinId) => {
+    const userId = get().userId;
+    const dogId = get().dogId;
+    const sid = typeof skinId === 'string' ? skinId.trim() : '';
+    if (!userId || !dogId) return { ok: false, error: 'userId/dogId manquant' };
+    if (!sid) return { ok: false, error: 'skinId manquant' };
+    try {
+      const res = await fetch(`${API_URL}/dog/${encodeURIComponent(dogId)}/equip-skin`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId, skinId: sid }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        return { ok: false, error: typeof data.error === 'string' ? data.error : "Équipement impossible" };
+      }
+      await get().fetchDog();
+      return { ok: true, data };
+    } catch {
+      return { ok: false, error: 'Erreur réseau' };
+    }
+  },
+
+  giveWater: async () => {
+    const ok = await get().feedDog();
+    return ok;
+  },
+
+  updateSettings: async ({ difficulty_mode, is_demo_mode } = {}) => {
+    const userId = get().userId;
+    if (!userId) return { ok: false, error: 'userId manquant' };
+    try {
+      const res = await fetch(`${API_URL}/user/settings`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId, difficulty_mode, is_demo_mode }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        return { ok: false, error: typeof data.error === 'string' ? data.error : 'Erreur serveur' };
+      }
+      set((state) => ({
+        ...state,
+        difficulty_mode:
+          typeof data.difficulty_mode === 'string' ? data.difficulty_mode : state.difficulty_mode,
+        is_demo_mode:
+          typeof data.is_demo_mode === 'boolean' ? data.is_demo_mode : state.is_demo_mode,
+      }));
+      await get().fetchDog();
+      return { ok: true, data };
+    } catch {
+      return { ok: false, error: 'Erreur réseau' };
+    }
+  },
+
   /** Call after logout so in-memory API user id is cleared. */
   resetAfterLogout: () =>
     set({
@@ -270,6 +444,11 @@ export const useDogStore = create((set, get) => ({
       water: 0,
       wallet_gold: 0,
       wallet_gems: 0,
+      inventory: { croquettes: 0, water_bottle: 0 },
+      unlocked_skins: [],
+      active_skin_id: '',
+      difficulty_mode: 'normal',
+      is_demo_mode: false,
       dogName: '',
       breed: '',
       tickMeta: null,

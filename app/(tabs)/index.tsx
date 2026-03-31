@@ -8,7 +8,7 @@ import { useThemedStyles } from '@/hooks/use-themed-styles';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { useFocusEffect } from '@react-navigation/native';
 import { useCallback, useEffect, useMemo } from 'react';
-import { AppState, type AppStateStatus, Text, View } from 'react-native';
+import { AppState, type AppStateStatus, Alert, Pressable, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 const HEALTH_MAX = 100;
@@ -28,7 +28,11 @@ export default function HomeScreen() {
   const maladie = useDogStore((state) => state.maladie);
   const wallet_gold = useDogStore((state) => state.wallet_gold);
   const wallet_gems = useDogStore((state) => state.wallet_gems);
+  const inventory = useDogStore((state) => state.inventory);
   const fetchDog = useDogStore((state) => state.fetchDog);
+  const feedDog = useDogStore((state) => state.feedDog);
+  const giveWater = useDogStore((state) => state.giveWater);
+  const buyConsumable = useDogStore((state) => state.buyConsumable);
 
   useDogLiveStats(true);
 
@@ -104,6 +108,16 @@ export default function HomeScreen() {
             <Text style={s.hudValue}>{wallet_gems}</Text>
           </View>
         </View>
+        <View style={s.hudRow}>
+          <View style={s.hudPill}>
+            <MaterialIcons name="restaurant" size={Layout.hudIconSize} color={c.foodBarFill} />
+            <Text style={s.hudValue}>{inventory?.croquettes ?? 0}</Text>
+          </View>
+          <View style={s.hudPill}>
+            <MaterialIcons name="water-drop" size={Layout.hudIconSize} color={c.waterBarFill} />
+            <Text style={s.hudValue}>{inventory?.water_bottle ?? 0}</Text>
+          </View>
+        </View>
 
         <Text style={s.dogTitle}>{dogName || 'Chien'}</Text>
 
@@ -163,6 +177,42 @@ export default function HomeScreen() {
               <Text style={s.statRingLabel}>Maladie</Text>
             </View>
           </View>
+        </View>
+        <View style={{ width: '100%', flexDirection: 'row', gap: 10, marginTop: 16 }}>
+          <Pressable
+            style={[s.primaryButton, { flex: 1, backgroundColor: c.buttonPrimaryBackground }]}
+            onPress={async () => {
+              const ok = await feedDog();
+              if (!ok) Alert.alert('Nourrir', "Impossible de nourrir le chien pour l'instant.");
+            }}>
+            <Text style={[s.buttonLabel, { color: c.buttonPrimaryText }]}>Nourrir</Text>
+          </Pressable>
+          <Pressable
+            style={[s.outlineButton, { flex: 1 }]}
+            onPress={async () => {
+              const ok = await giveWater();
+              if (!ok) Alert.alert('Eau', "Impossible de donner à boire pour l'instant.");
+            }}>
+            <Text style={s.outlineButtonLabel}>Donner à boire</Text>
+          </Pressable>
+        </View>
+        <View style={{ width: '100%', flexDirection: 'row', gap: 10, marginTop: 10 }}>
+          <Pressable
+            style={[s.outlineButton, { flex: 1 }]}
+            onPress={async () => {
+              const out = await buyConsumable('croquettes', 1);
+              if (!out.ok) Alert.alert('Boutique', out.error || "Impossible d'acheter des croquettes.");
+            }}>
+            <Text style={s.outlineButtonLabel}>Acheter croquettes</Text>
+          </Pressable>
+          <Pressable
+            style={[s.outlineButton, { flex: 1 }]}
+            onPress={async () => {
+              const out = await buyConsumable('water_bottle', 1);
+              if (!out.ok) Alert.alert('Boutique', out.error || "Impossible d'acheter de l'eau.");
+            }}>
+            <Text style={s.outlineButtonLabel}>Acheter eau</Text>
+          </Pressable>
         </View>
       </View>
 

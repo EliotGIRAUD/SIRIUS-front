@@ -2,7 +2,7 @@ import { useThemedStyles } from '@/hooks/use-themed-styles';
 import { useDogStore } from '@/hooks/useDogStore';
 import { getFirebaseAuth } from '@/lib/firebase';
 import { cacheFirebaseUser, isSetupComplete, setSetupComplete } from '@/lib/local-session';
-import { onAuthStateChanged, signInWithEmailAndPassword } from 'firebase/auth';
+import { createUserWithEmailAndPassword, onAuthStateChanged, signInWithEmailAndPassword } from 'firebase/auth';
 import { router } from 'expo-router';
 import { useEffect, useState } from 'react';
 import {
@@ -15,8 +15,10 @@ import {
 } from 'react-native';
 
 export default function LoginScreen() {
+  const [mode, setMode] = useState<'login' | 'register'>('login');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [pseudo, setPseudo] = useState('');
   const [loading, setLoading] = useState(false);
   const { colors: c, styles: s } = useThemedStyles();
 
@@ -28,15 +30,15 @@ export default function LoginScreen() {
       await cacheFirebaseUser(user);
       await useDogStore.getState().hydrateUserIdFromStorage();
       if (!useDogStore.getState().userId) {
-        const pseudo = user.email?.trim() || user.uid;
-        if (pseudo) await useDogStore.getState().authApiLogin(pseudo);
+        const idToken = await user.getIdToken();
+        await useDogStore.getState().authApiLogin({ idToken });
       }
       const hasDog = await useDogStore.getState().fetchDog();
       if (hasDog === null) {
-        router.replace((await isSetupComplete()) ? '/(tabs)' : '/setup-dog');
+        router.replace((await isSetupComplete()) ? '/(tabs)' : '/checkup');
       } else {
         await setSetupComplete(hasDog);
-        router.replace(hasDog ? '/(tabs)' : '/setup-dog');
+        router.replace(hasDog ? '/(tabs)' : '/checkup');
       }
     });
     return unsub;
@@ -52,11 +54,50 @@ export default function LoginScreen() {
     try {
       const cred = await signInWithEmailAndPassword(auth, email.trim(), password);
       await cacheFirebaseUser(cred.user);
-      const apiOk = await useDogStore.getState().authApiLogin(email.trim());
+      const idToken = await cred.user.getIdToken();
+      const apiOk = await useDogStore.getState().authApiLogin({ idToken });
       if (!apiOk) {
         Alert.alert(
           'Serveur',
           'Impossible de joindre POST /auth/login. Vérifie que l’API tourne et EXPO_PUBLIC_API_URL.',
+        );
+        return;
+      }
+      const hasDog = await useDogStore.getState().fetchDog();
+      if (hasDog === null) {
+        router.replace((await isSetupComplete()) ? '/(tabs)' : '/checkup');
+      } else {
+        await setSetupComplete(hasDog);
+        router.replace(hasDog ? '/(tabs)' : '/checkup');
+      }
+    } catch (e) {
+      Alert.alert('Connexion', e instanceof Error ? e.message : 'Erreur');
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function onRegister() {
+    const auth = getFirebaseAuth();
+    if (!auth) {
+      Alert.alert('Configuration', 'Définir les variables EXPO_PUBLIC_FIREBASE_* dans .env');
+      return;
+    }
+    const pseudoTrimmed = pseudo.trim();
+    if (!pseudoTrimmed) {
+      Alert.alert('Pseudo', 'Indiquer un pseudo (string non vide)');
+      return;
+    }
+    setLoading(true);
+    try {
+      const cred = await createUserWithEmailAndPassword(auth, email.trim(), password);
+      await cacheFirebaseUser(cred.user);
+      const idToken = await cred.user.getIdToken();
+      const apiOk = await useDogStore.getState().authApiRegister({ idToken, pseudo: pseudoTrimmed });
+      if (!apiOk) {
+        Alert.alert(
+          'Serveur',
+          'Impossible de joindre POST /auth/register. Vérifie que l’API tourne et EXPO_PUBLIC_API_URL.',
         );
         return;
       }
@@ -68,7 +109,7 @@ export default function LoginScreen() {
         router.replace(hasDog ? '/(tabs)' : '/setup-dog');
       }
     } catch (e) {
-      Alert.alert('Connexion', e instanceof Error ? e.message : 'Erreur');
+      Alert.alert('Inscription', e instanceof Error ? e.message : 'Erreur');
     } finally {
       setLoading(false);
     }
@@ -96,18 +137,36 @@ export default function LoginScreen() {
         value={password}
         onChangeText={setPassword}
       />
+      {mode === 'register' && (
+        <>
+          <Text style={s.fieldLabel}>Pseudo</Text>
+          <TextInput
+            style={s.textField}
+            placeholder="ex. Joueur1"
+            placeholderTextColor={c.textMuted}
+            autoCapitalize="none"
+            value={pseudo}
+            onChangeText={setPseudo}
+          />
+        </>
+      )}
       <Pressable
         style={[s.primaryButton, { backgroundColor: c.buttonPrimaryBackground }, loading && s.disabled]}
-        onPress={onLogin}
+        onPress={mode === 'login' ? onLogin : onRegister}
         disabled={loading}>
         {loading ? (
           <ActivityIndicator color={c.buttonPrimaryText} />
         ) : (
-          <Text style={[s.buttonLabel, { color: c.buttonPrimaryText }]}>Se connecter</Text>
+          <Text style={[s.buttonLabel, { color: c.buttonPrimaryText }]}>
+            {mode === 'login' ? 'Se connecter' : "S'inscrire"}
+          </Text>
         )}
       </Pressable>
-      <Pressable style={[s.outlineButton, s.disabled]} disabled>
-        <Text style={s.outlineButtonLabel}>S&apos;inscrire</Text>
+      <Pressable
+        style={[s.outlineButton, loading && s.disabled]}
+        disabled={loading}
+        onPress={() => setMode(mode === 'login' ? 'register' : 'login')}>
+        <Text style={s.outlineButtonLabel}>{mode === 'login' ? "S'inscrire" : 'Se connecter'}</Text>
       </Pressable>
     </View>
   );
