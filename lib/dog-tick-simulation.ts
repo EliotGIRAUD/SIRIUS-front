@@ -1,6 +1,6 @@
 /**
  * Client-side dog stat decay — must stay in sync with `dogService.applyTickFromValues` (SIRIUS-back).
- * Used for smooth UI between throttled server syncs.
+ * Uses continuous drain (fractional steps / hours) so the HUD can update every second.
  */
 
 export type TickMeta = {
@@ -33,34 +33,28 @@ export function simulateDogStatsFromAnchor(
   let health = Number.isFinite(healthStart) ? healthStart : MAX_STAT;
 
   const difficultyMult = meta.difficulty_hardcore ? 2 : 1;
-  let foodLoss = 0;
-  let waterLoss = 0;
+  const stepMs = Math.max(1, meta.demoStepMs || 10_000);
 
   if (meta.is_demo_mode) {
-    const step = Math.max(1, meta.demoStepMs || 10_000);
-    const steps = Math.floor(d / step);
-    foodLoss = Math.floor(steps * meta.demoFoodLossPer10s * difficultyMult);
-    waterLoss = Math.floor(steps * meta.demoWaterLossPer10s * difficultyMult);
+    const u = d / stepMs;
+    food = Math.max(0, Math.floor(food - u * meta.demoFoodLossPer10s * difficultyMult + 1e-9));
+    water = Math.max(0, Math.floor(water - u * meta.demoWaterLossPer10s * difficultyMult + 1e-9));
   } else {
-    const hours = d / (1000 * 60 * 60);
-    foodLoss = Math.floor(hours * meta.foodLossPerHour * difficultyMult);
-    waterLoss = Math.floor(hours * meta.waterLossPerHour * difficultyMult);
+    const foodLoss = Math.floor((d / (1000 * 60 * 60)) * meta.foodLossPerHour * difficultyMult);
+    const waterLoss = Math.floor((d / (1000 * 60 * 60)) * meta.waterLossPerHour * difficultyMult);
+    food = Math.max(0, food - foodLoss);
+    water = Math.max(0, water - waterLoss);
   }
 
-  food = Math.max(0, food - foodLoss);
-  water = Math.max(0, water - waterLoss);
-
   if (food === 0 || water === 0) {
-    let healthLoss = 0;
     if (meta.is_demo_mode) {
-      const step = Math.max(1, meta.demoStepMs || 10_000);
-      const steps = Math.floor(d / step);
-      healthLoss = Math.floor(steps * meta.demoHealthLossPer10sWhenDepleted * difficultyMult);
+      const u = d / stepMs;
+      const lost = u * meta.demoHealthLossPer10sWhenDepleted * difficultyMult;
+      health = Math.max(0, Math.floor(health - lost + 1e-9));
     } else {
-      const hours = d / (1000 * 60 * 60);
-      healthLoss = Math.floor(hours * meta.healthLossPerHourWhenDepleted * difficultyMult);
+      const healthLoss = Math.floor((d / (1000 * 60 * 60)) * meta.healthLossPerHourWhenDepleted * difficultyMult);
+      health = Math.max(0, health - healthLoss);
     }
-    health = Math.max(0, health - healthLoss);
   }
 
   const maladie = health < 50 ? 100 : 0;
