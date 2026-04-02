@@ -7,7 +7,7 @@ import { onAuthStateChanged } from 'firebase/auth';
 import { useEffect, useState } from 'react';
 import { ActivityIndicator, Text, View } from 'react-native';
 
-type Gate = 'boot' | 'login' | 'setup' | 'tabs';
+type Gate = 'boot' | 'login' | 'checkup' | 'setupDog' | 'tabs';
 
 export default function Index() {
   const [gate, setGate] = useState<Gate>('boot');
@@ -27,17 +27,19 @@ export default function Index() {
       }
       await cacheFirebaseUser(user);
       await useDogStore.getState().hydrateUserIdFromStorage();
-      if (!useDogStore.getState().userId) {
-        const idToken = await user.getIdToken();
-        await useDogStore.getState().authApiLogin({ idToken });
-      }
+      const idToken = await user.getIdToken();
+      await useDogStore.getState().authApiLogin({ idToken });
       const hasDog = await useDogStore.getState().fetchDog();
       let next: Gate;
       if (hasDog === null) {
-        next = (await isSetupComplete()) ? 'tabs' : 'setup';
+        next = (await isSetupComplete()) ? 'tabs' : 'checkup';
       } else {
-        await setSetupComplete(hasDog);
-        next = hasDog ? 'tabs' : 'setup';
+        if (hasDog) {
+          await setSetupComplete(true);
+          next = 'tabs';
+        } else {
+          next = (await isSetupComplete()) ? 'setupDog' : 'checkup';
+        }
       }
       setGate(next);
     });
@@ -60,8 +62,12 @@ export default function Index() {
     return <Redirect href="/login" />;
   }
 
-  if (gate === 'setup') {
+  if (gate === 'checkup') {
     return <Redirect href="/checkup" />;
+  }
+
+  if (gate === 'setupDog') {
+    return <Redirect href="/setup-dog" />;
   }
 
   return <Redirect href="/(tabs)" />;

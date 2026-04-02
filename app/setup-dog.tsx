@@ -1,6 +1,7 @@
 import { setSetupComplete } from '@/lib/local-session';
 import { useDogStore } from '@/hooks/useDogStore';
 import { useThemedStyles } from '@/hooks/use-themed-styles';
+import { getFirebaseAuth } from '@/lib/firebase';
 import { Image } from 'expo-image';
 import { router } from 'expo-router';
 import { useState } from 'react';
@@ -36,6 +37,21 @@ export default function SetupDogScreen() {
     }
     setBusy(true);
     try {
+      const auth = getFirebaseAuth();
+      const user = auth?.currentUser ?? null;
+      if (!user) {
+        router.replace('/login');
+        return;
+      }
+
+      await useDogStore.getState().hydrateUserIdFromStorage();
+      const idToken = await user.getIdToken();
+      const apiOk = await useDogStore.getState().authApiLogin({ idToken });
+      if (!apiOk) {
+        Alert.alert('Erreur', 'POST /init-dog a échoué');
+        return;
+      }
+
       const ok = await initDog(nom, breed);
       if (!ok) {
         Alert.alert('Erreur', 'POST /init-dog a échoué');

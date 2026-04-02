@@ -4,9 +4,21 @@ import {
   updateUserSnapshot,
 } from '../lib/local-session';
 import { simulateDogStatsFromAnchor } from '../lib/dog-tick-simulation';
+import { Platform } from 'react-native';
 import { create } from 'zustand';
 
-const API_URL = process.env.EXPO_PUBLIC_API_URL ?? 'http://localhost:3001';
+const RAW_API_URL = typeof process.env.EXPO_PUBLIC_API_URL === 'string'
+  ? process.env.EXPO_PUBLIC_API_URL.trim()
+  : '';
+
+/**
+ * On web, localhost is usually the most reliable way to hit the local API.
+ * Keep LAN URL for native devices (Expo Go / simulators) where localhost is not the backend machine.
+ */
+const API_URL =
+  Platform.OS === 'web'
+    ? RAW_API_URL.replace(/^https?:\/\/(?:\d{1,3}\.){3}\d{1,3}(?::\d+)?$/i, 'http://localhost:3001') || 'http://localhost:3001'
+    : RAW_API_URL || 'http://localhost:3001';
 
 /** Default rates (golden_retriever–class profile) if API omits zeros. */
 function normalizeTickMeta(raw) {
@@ -429,8 +441,30 @@ export const useDogStore = create((set, get) => ({
   },
 
   giveWater: async () => {
-    const ok = await get().feedDog();
-    return ok;
+    const userId = get().userId;
+    const dogId = get().dogId;
+    if (!userId || !dogId) return { ok: false, error: 'userId/dogId manquant' };
+    try {
+      const res = await fetch(`${API_URL}/interact/water`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId, dogId }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        return {
+          ok: false,
+          error:
+            typeof data.error === 'string'
+              ? data.error
+              : "Impossible de donner à boire pour l'instant.",
+        };
+      }
+      await get().fetchDog();
+      return { ok: true, data };
+    } catch {
+      return { ok: false, error: 'Erreur réseau' };
+    }
   },
 
   updateSettings: async ({ difficulty_mode, is_demo_mode } = {}) => {

@@ -3,7 +3,7 @@ import { useDogStore } from '@/hooks/useDogStore';
 import { getFirebaseAuth } from '@/lib/firebase';
 import { cacheFirebaseUser, isSetupComplete, setSetupComplete } from '@/lib/local-session';
 import { createUserWithEmailAndPassword, onAuthStateChanged, signInWithEmailAndPassword } from 'firebase/auth';
-import { router } from 'expo-router';
+import { router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useState } from 'react';
 import {
   ActivityIndicator,
@@ -15,6 +15,7 @@ import {
 } from 'react-native';
 
 export default function LoginScreen() {
+  const { mode: modeParam } = useLocalSearchParams<{ mode?: string }>();
   const [mode, setMode] = useState<'login' | 'register'>('login');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -23,22 +24,34 @@ export default function LoginScreen() {
   const { colors: c, styles: s } = useThemedStyles();
 
   useEffect(() => {
+    if (modeParam === 'register') {
+      setMode('register');
+      return;
+    }
+    if (modeParam === 'login') {
+      setMode('login');
+    }
+  }, [modeParam]);
+
+  useEffect(() => {
     const auth = getFirebaseAuth();
     if (!auth) return;
     const unsub = onAuthStateChanged(auth, async (user) => {
       if (!user) return;
       await cacheFirebaseUser(user);
       await useDogStore.getState().hydrateUserIdFromStorage();
-      if (!useDogStore.getState().userId) {
-        const idToken = await user.getIdToken();
-        await useDogStore.getState().authApiLogin({ idToken });
-      }
+      const idToken = await user.getIdToken();
+      await useDogStore.getState().authApiLogin({ idToken });
       const hasDog = await useDogStore.getState().fetchDog();
       if (hasDog === null) {
         router.replace((await isSetupComplete()) ? '/(tabs)' : '/checkup');
       } else {
-        await setSetupComplete(hasDog);
-        router.replace(hasDog ? '/(tabs)' : '/checkup');
+        if (hasDog) {
+          await setSetupComplete(true);
+          router.replace('/(tabs)');
+        } else {
+          router.replace((await isSetupComplete()) ? '/setup-dog' : '/checkup');
+        }
       }
     });
     return unsub;
@@ -67,8 +80,12 @@ export default function LoginScreen() {
       if (hasDog === null) {
         router.replace((await isSetupComplete()) ? '/(tabs)' : '/checkup');
       } else {
-        await setSetupComplete(hasDog);
-        router.replace(hasDog ? '/(tabs)' : '/checkup');
+        if (hasDog) {
+          await setSetupComplete(true);
+          router.replace('/(tabs)');
+        } else {
+          router.replace((await isSetupComplete()) ? '/setup-dog' : '/checkup');
+        }
       }
     } catch (e) {
       Alert.alert('Connexion', e instanceof Error ? e.message : 'Erreur');
@@ -103,10 +120,14 @@ export default function LoginScreen() {
       }
       const hasDog = await useDogStore.getState().fetchDog();
       if (hasDog === null) {
-        router.replace((await isSetupComplete()) ? '/(tabs)' : '/setup-dog');
+        router.replace((await isSetupComplete()) ? '/(tabs)' : '/checkup');
       } else {
-        await setSetupComplete(hasDog);
-        router.replace(hasDog ? '/(tabs)' : '/setup-dog');
+        if (hasDog) {
+          await setSetupComplete(true);
+          router.replace('/(tabs)');
+        } else {
+          router.replace((await isSetupComplete()) ? '/setup-dog' : '/checkup');
+        }
       }
     } catch (e) {
       Alert.alert('Inscription', e instanceof Error ? e.message : 'Erreur');

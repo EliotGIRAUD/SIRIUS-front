@@ -188,12 +188,12 @@ export default function HomeScreen() {
             <Text style={[s.buttonLabel, { color: c.buttonPrimaryText }]}>Nourrir</Text>
           </Pressable>
           <Pressable
-            style={[s.outlineButton, { flex: 1 }]}
+            style={[s.primaryButton, { flex: 1, backgroundColor: c.buttonPrimaryBackground }]}
             onPress={async () => {
-              const ok = await giveWater();
-              if (!ok) Alert.alert('Eau', "Impossible de donner à boire pour l'instant.");
+              const out = await giveWater();
+              if (!out.ok) Alert.alert('Eau', out.error || "Impossible de donner à boire pour l'instant.");
             }}>
-            <Text style={s.outlineButtonLabel}>Donner à boire</Text>
+            <Text style={[s.buttonLabel, { color: c.buttonPrimaryText }]}>Donner à boire</Text>
           </Pressable>
         </View>
         <View style={{ width: '100%', flexDirection: 'row', gap: 10, marginTop: 10 }}>

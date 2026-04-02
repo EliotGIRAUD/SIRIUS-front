@@ -1,6 +1,7 @@
 import { useThemedStyles } from '@/hooks/use-themed-styles';
+import { isSetupComplete } from '@/lib/local-session';
 import { router } from 'expo-router';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Pressable, Text, View } from 'react-native';
 
 const STEPS = [
@@ -25,6 +26,19 @@ const STEPS = [
 export default function CheckupScreen() {
   const [step, setStep] = useState(0);
   const { colors: c, styles: s } = useThemedStyles();
+
+  useEffect(() => {
+    let cancelled = false;
+    void (async () => {
+      const alreadyDone = await isSetupComplete();
+      if (!cancelled && alreadyDone) {
+        router.replace('/setup-dog');
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const isLast = step >= STEPS.length - 1;
   const current = STEPS[step];

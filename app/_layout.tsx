@@ -19,6 +19,7 @@ export default function RootLayout() {
       <Stack screenOptions={{ contentStyle: { backgroundColor: screenBg } }}>
         <Stack.Screen name="index" options={{ headerShown: false }} />
         <Stack.Screen name="login" options={{ headerShown: false }} />
+        <Stack.Screen name="register" options={{ headerShown: false }} />
         <Stack.Screen name="checkup" options={{ headerShown: false }} />
         <Stack.Screen name="setup-dog" options={{ headerShown: false }} />
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
