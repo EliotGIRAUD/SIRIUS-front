@@ -91,37 +91,51 @@ export default function SettingsScreen() {
 
         <View style={[s.settingsCard, { gap: 10 }]}>
           <Text style={s.settingsCardLabel}>Difficulté</Text>
-          <View style={{ flexDirection: 'row', gap: 10 }}>
+          <View style={s.shopSegmentWrap}>
             <Pressable
-              style={[
-                s.outlineButton,
-                {
-                  flex: 1,
-                  borderColor: difficulty_mode === 'normal' ? c.buttonPrimaryBackground : c.inputBorder,
-                },
+              style={({ pressed }) => [
+                s.shopSegmentButton,
+                difficulty_mode === 'normal' && s.shopSegmentButtonActive,
+                pressed && s.shopSegmentButtonPressed,
                 saving && s.disabled,
               ]}
               disabled={saving}
               onPress={() => onChangeDifficulty('normal')}>
-              <Text style={s.outlineButtonLabel}>Normal</Text>
+              <Text
+                style={[
+                  s.shopSegmentLabel,
+                  difficulty_mode === 'normal' && s.shopSegmentLabelActive,
+                ]}>
+                Normal
+              </Text>
             </Pressable>
             <Pressable
-              style={[
-                s.outlineButton,
-                {
-                  flex: 1,
-                  borderColor: difficulty_mode === 'hardcore' ? c.buttonPrimaryBackground : c.inputBorder,
-                },
+              style={({ pressed }) => [
+                s.shopSegmentButton,
+                difficulty_mode === 'hardcore' && s.shopSegmentButtonActive,
+                pressed && s.shopSegmentButtonPressed,
                 saving && s.disabled,
               ]}
               disabled={saving}
               onPress={() => onChangeDifficulty('hardcore')}>
-              <Text style={s.outlineButtonLabel}>Hardcore</Text>
+              <Text
+                style={[
+                  s.shopSegmentLabel,
+                  difficulty_mode === 'hardcore' && s.shopSegmentLabelActive,
+                ]}>
+                Hardcore
+              </Text>
             </Pressable>
           </View>
           <Text style={s.settingsCardLabel}>Mode démo</Text>
           <Pressable
-            style={[s.outlineButton, saving && s.disabled]}
+            style={({ pressed }) => [
+              s.outlineButton,
+              { borderColor: is_demo_mode ? c.buttonPrimaryBackground : c.inputBorder },
+              is_demo_mode && { backgroundColor: c.hudPillBackground },
+              pressed && s.shopSegmentButtonPressed,
+              saving && s.disabled,
+            ]}
             disabled={saving}
             onPress={onToggleDemo}>
             <Text style={s.outlineButtonLabel}>{is_demo_mode ? 'Activé' : 'Désactivé'}</Text>
@@ -129,7 +143,11 @@ export default function SettingsScreen() {
         </View>
 
         <Pressable
-          style={[s.outlineButton, (signingOut || saving) && s.disabled]}
+          style={({ pressed }) => [
+            s.outlineButton,
+            pressed && s.shopSegmentButtonPressed,
+            (signingOut || saving) && s.disabled,
+          ]}
           onPress={onSignOut}
           disabled={signingOut || saving}>
           {signingOut ? (

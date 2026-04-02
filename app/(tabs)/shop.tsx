@@ -3,7 +3,7 @@ import { ThemedText } from '@/components/themed-text';
 import { useDogStore } from '@/hooks/useDogStore';
 import { useThemedStyles } from '@/hooks/use-themed-styles';
 import { useMemo, useState } from 'react';
-import { Alert, Pressable, Text, View } from 'react-native';
+import { Alert, Pressable, ScrollView, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 const ITEMS = [
@@ -20,6 +20,8 @@ export default function ShopScreen() {
   const insets = useSafeAreaInsets();
   const { colors: c, styles: s } = useThemedStyles();
   const [tab, setTab] = useState<'items' | 'skins'>('items');
+  const [activeEntryId, setActiveEntryId] = useState('');
+  const [pendingActionId, setPendingActionId] = useState('');
 
   const wallet_gold = useDogStore((st) => st.wallet_gold);
   const wallet_gems = useDogStore((st) => st.wallet_gems);
@@ -48,75 +50,108 @@ export default function ShopScreen() {
         </ThemedText>
         <ThemedText style={s.settingsSubtitle}>{header.subtitle}</ThemedText>
 
-        <View style={{ flexDirection: 'row', gap: 10 }}>
+        <View style={s.shopSegmentWrap}>
           <Pressable
-            style={[
-              s.outlineButton,
-              { flex: 1, borderColor: isItems ? c.buttonPrimaryBackground : c.inputBorder },
+            style={({ pressed }) => [
+              s.shopSegmentButton,
+              isItems && s.shopSegmentButtonActive,
+              pressed && s.shopSegmentButtonPressed,
             ]}
             onPress={() => setTab('items')}>
-            <Text style={s.outlineButtonLabel}>Items</Text>
+            <Text style={[s.shopSegmentLabel, isItems && s.shopSegmentLabelActive]}>Items</Text>
           </Pressable>
           <Pressable
-            style={[
-              s.outlineButton,
-              { flex: 1, borderColor: !isItems ? c.buttonPrimaryBackground : c.inputBorder },
+            style={({ pressed }) => [
+              s.shopSegmentButton,
+              !isItems && s.shopSegmentButtonActive,
+              pressed && s.shopSegmentButtonPressed,
             ]}
             onPress={() => setTab('skins')}>
-            <Text style={s.outlineButtonLabel}>Skins</Text>
+            <Text style={[s.shopSegmentLabel, !isItems && s.shopSegmentLabelActive]}>Skins</Text>
           </Pressable>
         </View>
 
-        <View style={s.settingsCard}>
-          <Text style={s.settingsCardLabel}>Solde</Text>
-          <Text style={s.settingsCardValue}>
-            Or : {wallet_gold} — Gemmes : {wallet_gems}
-          </Text>
+        <View style={s.shopWalletRow}>
+          <View style={s.shopWalletPill}>
+            <Text style={s.shopWalletLabel}>Or</Text>
+            <Text style={s.shopWalletValue}>{wallet_gold}</Text>
+          </View>
+          <View style={s.shopWalletPill}>
+            <Text style={s.shopWalletLabel}>Gemmes</Text>
+            <Text style={s.shopWalletValue}>{wallet_gems}</Text>
+          </View>
         </View>
 
-        {isItems ? (
-          <View style={{ gap: 10 }}>
-            {ITEMS.map((it) => (
-              <View key={it.id} style={s.settingsCard}>
-                <Text style={s.settingsCardLabel}>{it.label}</Text>
-                <Text style={s.settingsCardValue}>{it.priceGold} or</Text>
+        <ScrollView contentContainerStyle={s.shopList} showsVerticalScrollIndicator={false}>
+          {isItems ? (
+            ITEMS.map((it) => (
+              <View key={it.id} style={[s.shopCard, activeEntryId === it.id && s.shopCardActive]}>
+                <Text style={s.shopCardTitle}>{it.label}</Text>
+                <Text style={s.shopCardPrice}>{it.priceGold} or</Text>
                 <Pressable
-                  style={[s.primaryButton, { backgroundColor: c.buttonPrimaryBackground, marginTop: 10 }]}
+                  style={({ pressed }) => [
+                    s.primaryButton,
+                    s.shopCardAction,
+                    { backgroundColor: c.buttonPrimaryBackground },
+                    (wallet_gold < it.priceGold || pendingActionId === it.id) && s.shopCardActionDisabled,
+                    pressed && s.shopSegmentButtonPressed,
+                  ]}
+                  disabled={wallet_gold < it.priceGold || pendingActionId === it.id}
                   onPress={async () => {
+                    setActiveEntryId(it.id);
+                    setPendingActionId(it.id);
                     const out = await buyConsumable(it.id, 1);
+                    setPendingActionId('');
                     if (!out.ok) Alert.alert('Achat', out.error || 'Achat impossible');
                   }}>
                   <Text style={[s.buttonLabel, { color: c.buttonPrimaryText }]}>Acheter ×1</Text>
                 </Pressable>
               </View>
-            ))}
-          </View>
-        ) : (
-          <View style={{ gap: 10 }}>
-            {SKINS.map((sk) => {
+            ))
+          ) : (
+            SKINS.map((sk) => {
               const owned = unlocked_skins.includes(sk.id);
               const equipped = active_skin_id === sk.id;
+              const pending = pendingActionId === sk.id;
+              const cannotBuy = wallet_gems < sk.priceGems;
               return (
-                <View key={sk.id} style={s.settingsCard}>
-                  <Text style={s.settingsCardLabel}>{sk.label}</Text>
-                  <Text style={s.settingsCardValue}>{sk.priceGems} gemmes</Text>
+                <View key={sk.id} style={[s.shopCard, activeEntryId === sk.id && s.shopCardActive]}>
+                  <Text style={s.shopCardTitle}>{sk.label}</Text>
+                  <Text style={s.shopCardPrice}>{sk.priceGems} gemmes</Text>
                   {!owned ? (
                     <Pressable
-                      style={[s.primaryButton, { backgroundColor: c.buttonPrimaryBackground, marginTop: 10 }]}
+                      style={({ pressed }) => [
+                        s.primaryButton,
+                        s.shopCardAction,
+                        { backgroundColor: c.buttonPrimaryBackground },
+                        (cannotBuy || pending) && s.shopCardActionDisabled,
+                        pressed && s.shopSegmentButtonPressed,
+                      ]}
+                      disabled={cannotBuy || pending}
                       onPress={async () => {
+                        setActiveEntryId(sk.id);
+                        setPendingActionId(sk.id);
                         const out = await buySkin(sk.id);
+                        setPendingActionId('');
                         if (!out.ok) Alert.alert('Achat', out.error || 'Achat impossible');
                       }}>
                       <Text style={[s.buttonLabel, { color: c.buttonPrimaryText }]}>Acheter</Text>
                     </Pressable>
                   ) : (
                     <Pressable
-                      style={[
+                      style={({ pressed }) => [
                         s.outlineButton,
-                        { marginTop: 10, borderColor: equipped ? c.buttonPrimaryBackground : c.inputBorder },
+                        s.shopCardAction,
+                        { borderColor: equipped ? c.buttonPrimaryBackground : c.inputBorder },
+                        (equipped || pending) && s.shopCardActionDisabled,
+                        pressed && s.shopSegmentButtonPressed,
                       ]}
+                      disabled={equipped || pending}
                       onPress={async () => {
+                        setActiveEntryId(sk.id);
+                        setPendingActionId(sk.id);
                         const out = await equipSkin(sk.id);
+                        setPendingActionId('');
                         if (!out.ok) Alert.alert('Skin', out.error || "Impossible d'équiper");
                       }}>
                       <Text style={s.outlineButtonLabel}>{equipped ? 'Équipé' : 'Équiper'}</Text>
@@ -124,9 +159,9 @@ export default function ShopScreen() {
                   )}
                 </View>
               );
-            })}
-          </View>
-        )}
+            })
+          )}
+        </ScrollView>
       </View>
       <GameTabBar />
     </View>
