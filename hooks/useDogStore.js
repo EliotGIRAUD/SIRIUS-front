@@ -1,5 +1,8 @@
 import {
+  cacheSessionUser,
+  getAuthToken,
   getBackendUserId,
+  setAuthToken,
   setBackendUserId,
   updateUserSnapshot,
 } from '../lib/local-session';
@@ -19,6 +22,15 @@ const API_URL =
   Platform.OS === 'web'
     ? RAW_API_URL.replace(/^https?:\/\/(?:\d{1,3}\.){3}\d{1,3}(?::\d+)?$/i, 'http://localhost:3001') || 'http://localhost:3001'
     : RAW_API_URL || 'http://localhost:3001';
+
+function jsonHeaders(get) {
+  const t = get().authToken;
+  const h = { 'Content-Type': 'application/json' };
+  if (typeof t === 'string' && t.length > 0) {
+    h.Authorization = `Bearer ${t}`;
+  }
+  return h;
+}
 
 /** Default rates (golden_retriever–class profile) if API omits zeros. */
 function normalizeTickMeta(raw) {
@@ -157,6 +169,7 @@ function mapDogsListPayload(data) {
 
 export const useDogStore = create((set, get) => ({
   userId: '',
+  authToken: '',
   dogId: '',
   food: 0,
   health: 0,
@@ -179,61 +192,76 @@ export const useDogStore = create((set, get) => ({
   /** Restore userId from storage (cold start). */
   hydrateUserIdFromStorage: async () => {
     const id = await getBackendUserId();
+    const authTok = await getAuthToken();
     if (id) {
-      set({ userId: id });
+      set({
+        userId: id,
+        authToken: typeof authTok === 'string' ? authTok : '',
+      });
     }
   },
 
-  /**
-   * POST /auth/login — stores the returned uid as userId for /dogs/:userId and init-dog.
-   */
-  authApiLogin: async ({ idToken, pseudo } = {}) => {
-    const token = typeof idToken === 'string' ? idToken.trim() : '';
-    const pseudoTrimmed = typeof pseudo === 'string' ? pseudo.trim() : '';
-    if (!token) return false;
+  authApiLogin: async ({ email, password } = {}) => {
+    const em = typeof email === 'string' ? email.trim().toLowerCase() : '';
+    const pw = typeof password === 'string' ? password : '';
+    if (!em || !pw) return false;
     try {
       const res = await fetch(`${API_URL}/auth/login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          idToken: token,
-          ...(pseudoTrimmed ? { pseudo: pseudoTrimmed } : {}),
-        }),
+        body: JSON.stringify({ email: em, password: pw }),
       });
       if (!res.ok) return false;
       const data = await res.json();
       const uid = typeof data.uid === 'string' ? data.uid.trim() : '';
-      if (!uid) return false;
-      set({ userId: uid });
+      const jwt = typeof data.token === 'string' ? data.token.trim() : '';
+      if (!uid || !jwt) return false;
+      set({ userId: uid, authToken: jwt });
       await setBackendUserId(uid);
+      await setAuthToken(jwt);
+      const pseudo =
+        typeof data.pseudo === 'string' && data.pseudo.trim()
+          ? data.pseudo.trim()
+          : '';
+      await cacheSessionUser({
+        uid,
+        email: em,
+        displayName: pseudo,
+      });
       return true;
     } catch {
       return false;
     }
   },
 
-  /**
-   * POST /auth/register — stores the returned uid as userId for /dogs/:userId and init-dog.
-   */
-  authApiRegister: async ({ idToken, pseudo } = {}) => {
-    const token = typeof idToken === 'string' ? idToken.trim() : '';
+  authApiRegister: async ({ email, password, pseudo } = {}) => {
+    const em = typeof email === 'string' ? email.trim().toLowerCase() : '';
+    const pw = typeof password === 'string' ? password : '';
     const pseudoTrimmed = typeof pseudo === 'string' ? pseudo.trim() : '';
-    if (!token) return false;
+    if (!em || !pw || !pseudoTrimmed) return false;
     try {
       const res = await fetch(`${API_URL}/auth/register`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          idToken: token,
-          ...(pseudoTrimmed ? { pseudo: pseudoTrimmed } : {}),
+          email: em,
+          password: pw,
+          pseudo: pseudoTrimmed,
         }),
       });
       if (!res.ok) return false;
       const data = await res.json();
       const uid = typeof data.uid === 'string' ? data.uid.trim() : '';
-      if (!uid) return false;
-      set({ userId: uid });
+      const jwt = typeof data.token === 'string' ? data.token.trim() : '';
+      if (!uid || !jwt) return false;
+      set({ userId: uid, authToken: jwt });
       await setBackendUserId(uid);
+      await setAuthToken(jwt);
+      await cacheSessionUser({
+        uid,
+        email: em,
+        displayName: pseudoTrimmed,
+      });
       return true;
     } catch {
       return false;
@@ -248,7 +276,9 @@ export const useDogStore = create((set, get) => ({
     const userId = get().userId;
     if (!userId) return null;
     try {
-      const res = await fetch(`${API_URL}/dogs/${encodeURIComponent(userId)}`);
+      const res = await fetch(`${API_URL}/dogs/${encodeURIComponent(userId)}`, {
+        headers: jsonHeaders(get),
+      });
       if (res.status === 404) {
         set({
           dogId: '',
@@ -336,7 +366,7 @@ export const useDogStore = create((set, get) => ({
     try {
       const res = await fetch(`${API_URL}/init-dog`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: jsonHeaders(get),
         body: JSON.stringify({
           name,
           userId,
@@ -364,7 +394,7 @@ export const useDogStore = create((set, get) => ({
     try {
       const res = await fetch(`${API_URL}/interact/feed`, {
         method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
+        headers: jsonHeaders(get),
         body: JSON.stringify({ userId, dogId }),
       });
       if (!res.ok) return false;
@@ -381,7 +411,7 @@ export const useDogStore = create((set, get) => ({
     try {
       const res = await fetch(`${API_URL}/shop/buy`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: jsonHeaders(get),
         body: JSON.stringify({ userId, item, quantity }),
       });
       const data = await res.json().catch(() => ({}));
@@ -403,7 +433,7 @@ export const useDogStore = create((set, get) => ({
     try {
       const res = await fetch(`${API_URL}/shop/buy-skin`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: jsonHeaders(get),
         body: JSON.stringify({ userId, skinId: sid }),
       });
       const data = await res.json().catch(() => ({}));
@@ -426,7 +456,7 @@ export const useDogStore = create((set, get) => ({
     try {
       const res = await fetch(`${API_URL}/dog/${encodeURIComponent(dogId)}/equip-skin`, {
         method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
+        headers: jsonHeaders(get),
         body: JSON.stringify({ userId, skinId: sid }),
       });
       const data = await res.json().catch(() => ({}));
@@ -447,7 +477,7 @@ export const useDogStore = create((set, get) => ({
     try {
       const res = await fetch(`${API_URL}/interact/water`, {
         method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
+        headers: jsonHeaders(get),
         body: JSON.stringify({ userId, dogId }),
       });
       const data = await res.json().catch(() => ({}));
@@ -473,7 +503,7 @@ export const useDogStore = create((set, get) => ({
     try {
       const res = await fetch(`${API_URL}/user/settings`, {
         method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
+        headers: jsonHeaders(get),
         body: JSON.stringify({ userId, difficulty_mode, is_demo_mode }),
       });
       const data = await res.json().catch(() => ({}));
@@ -498,6 +528,7 @@ export const useDogStore = create((set, get) => ({
   resetAfterLogout: () =>
     set({
       userId: '',
+      authToken: '',
       dogId: '',
       food: 0,
       health: 0,

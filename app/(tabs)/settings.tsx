@@ -1,11 +1,9 @@
 import { GameTabBar } from '@/components/game-tab-bar';
 import { ThemedText } from '@/components/themed-text';
 import { useDogStore } from '@/hooks/useDogStore';
-import { getFirebaseAuth } from '@/lib/firebase';
 import { clearLocalSession, getUserSnapshot, type UserSnapshot } from '@/lib/local-session';
 import { useThemedStyles } from '@/hooks/use-themed-styles';
 import { router } from 'expo-router';
-import { signOut } from 'firebase/auth';
 import { useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, Alert, Pressable, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -31,10 +29,6 @@ export default function SettingsScreen() {
   async function onSignOut() {
     setSigningOut(true);
     try {
-      const auth = getFirebaseAuth();
-      if (auth) {
-        await signOut(auth);
-      }
       await clearLocalSession();
       useDogStore.getState().resetAfterLogout();
       router.replace('/login');
