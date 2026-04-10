@@ -42,12 +42,13 @@ export function createThemedStyles(c: ThemeColors) {
       color: c.text,
     },
     textField: {
-      borderWidth: 1,
+      borderWidth: 0,
       borderColor: c.inputBorder,
       borderRadius: Radius.sm,
       padding: Spacing.md,
       fontSize: FontSize.body,
       color: c.text,
+      backgroundColor: c.inputBackground,
     },
     /** Universal filled CTA — colour from `buttonPrimaryBackground` / `buttonPrimaryText`. */
     primaryButton: {

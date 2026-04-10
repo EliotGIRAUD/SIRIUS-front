@@ -7,20 +7,32 @@ import { Platform } from "react-native";
 
 export const Palette = {
   /** Brand accent — all filled/outline CTAs derive from this via `buttonPrimary*`. */
-  primary: "#0a7ea4",
-  onPrimary: "#ffffff",
+  primary: "#3B090C",
+  onPrimary: "#FFEFDF",
+  /** Main app shell background (non-onboarding). */
+  appBackground: "#FBE4CE",
+  /** Brand dark text / button tone. */
+  brandInk: "#3B090C",
+  /** Input fill in auth forms. */
+  fieldTint: "#3B090C0D",
+  /** Input text / placeholder muted tone. */
+  fieldTextMuted: "#3B090C80",
+  /** Onboarding dedicated palette. */
+  onboardingBackground: "#3B090C",
+  onboardingText: "#FBE4CE",
+  onboardingGlow: "rgba(251,228,206,0.08)",
   secondary: "#6366f1",
   onSecondary: "#ffffff",
   success: "#16a34a",
   onSuccess: "#ffffff",
 
-  background: "#ffffff",
-  surface: "#f1f5f9",
-  surfaceElevated: "#ffffff",
-  text: "#11181C",
-  textMuted: "#687076",
+  background: "#FBE4CE",
+  surface: "#3B090C0D",
+  surfaceElevated: "#FFEFDF",
+  text: "#3B090C",
+  textMuted: "#3B090C80",
   textSubtle: "#64748b",
-  border: "#e2e8f0",
+  border: "#3B090C0D",
   borderStrong: "#cbd5e1",
 
   icon: "#687076",
@@ -56,7 +68,7 @@ export const Palette = {
   dogVectorTongue: "#fdba74",
   dark: {
     primaryAsTint: "#ffffff",
-    background: "#151718",
+    background: "#FBE4CE",
     surface: "#0f172a",
     surfaceElevated: "#1e293b",
     text: "#ECEDEE",
@@ -95,9 +107,9 @@ export const Palette = {
 function lightColors() {
   const p = Palette;
   return {
-    text: p.text,
-    textMuted: p.textMuted,
-    background: p.background,
+    text: p.brandInk,
+    textMuted: p.fieldTextMuted,
+    background: p.appBackground,
     tint: p.primary,
     link: p.primary,
     icon: p.icon,
@@ -112,7 +124,11 @@ function lightColors() {
     buttonPositiveText: p.onPrimary,
     buttonGhostBackground: p.buttonGhostBg,
     buttonGhostText: p.buttonGhostText,
-    inputBorder: p.border,
+    inputBorder: p.fieldTint,
+    inputBackground: p.fieldTint,
+    onboardingBackground: p.onboardingBackground,
+    onboardingText: p.onboardingText,
+    onboardingGlow: p.onboardingGlow,
 
     /** Same as `background` — full-screen canvas (dashboard, settings, etc.). */
     gameSurface: p.background,
@@ -171,6 +187,10 @@ function darkColors() {
     buttonGhostBackground: d.buttonGhostBg,
     buttonGhostText: d.buttonGhostText,
     inputBorder: d.border,
+    inputBackground: d.surface,
+    onboardingBackground: p.onboardingBackground,
+    onboardingText: p.onboardingText,
+    onboardingGlow: p.onboardingGlow,
 
     gameSurface: d.background,
     gameStageBorder: d.borderStrong,
