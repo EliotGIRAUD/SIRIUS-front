@@ -20,8 +20,11 @@ const RAW_API_URL = typeof process.env.EXPO_PUBLIC_API_URL === 'string'
  */
 const API_URL =
   Platform.OS === 'web'
-    ? RAW_API_URL.replace(/^https?:\/\/(?:\d{1,3}\.){3}\d{1,3}(?::\d+)?$/i, 'http://localhost:3001') || 'http://localhost:3001'
-    : RAW_API_URL || 'http://localhost:3001';
+    ? RAW_API_URL.replace(/^https?:\/\/(?:\d{1,3}\.){3}\d{1,3}(?::\d+)?$/i, 'http://localhost:3000') || 'http://localhost:3000'
+    : RAW_API_URL || 'http://localhost:3000';
+const FIREBASE_API_KEY = typeof process.env.EXPO_PUBLIC_FIREBASE_API_KEY === 'string'
+  ? process.env.EXPO_PUBLIC_FIREBASE_API_KEY.trim()
+  : '';
 
 function jsonHeaders(get) {
   const t = get().authToken;
@@ -30,6 +33,71 @@ function jsonHeaders(get) {
     h.Authorization = `Bearer ${t}`;
   }
   return h;
+}
+
+async function firebaseAuthEmailPassword(mode, email, password) {
+  if (!FIREBASE_API_KEY) return null;
+  const endpoint = mode === 'register'
+    ? 'https://identitytoolkit.googleapis.com/v1/accounts:signUp'
+    : 'https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword';
+  try {
+    const res = await fetch(`${endpoint}?key=${encodeURIComponent(FIREBASE_API_KEY)}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        email,
+        password,
+        returnSecureToken: true,
+      }),
+    });
+    if (!res.ok) return null;
+    const data = await res.json().catch(() => ({}));
+    const idToken = typeof data.idToken === 'string' ? data.idToken.trim() : '';
+    return idToken || null;
+  } catch {
+    return null;
+  }
+}
+
+async function readJsonSafe(res) {
+  try {
+    return await res.json();
+  } catch {
+    return {};
+  }
+}
+
+function normalizeAuthPayload(data) {
+  const uid = typeof data.uid === 'string'
+    ? data.uid.trim()
+    : typeof data.userId === 'string'
+      ? data.userId.trim()
+      : typeof data.id === 'string'
+        ? data.id.trim()
+        : '';
+  const token = typeof data.token === 'string'
+    ? data.token.trim()
+    : typeof data.jwt === 'string'
+      ? data.jwt.trim()
+      : typeof data.accessToken === 'string'
+        ? data.accessToken.trim()
+        : '';
+  const pseudo = typeof data.pseudo === 'string'
+    ? data.pseudo.trim()
+    : typeof data.username === 'string'
+      ? data.username.trim()
+      : '';
+  return { uid, token, pseudo };
+}
+
+async function postBackendAuth(path, payload) {
+  const res = await fetch(`${API_URL}${path}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  });
+  const data = await readJsonSafe(res);
+  return { ok: res.ok, status: res.status, data };
 }
 
 /** Default rates (golden_retriever–class profile) if API omits zeros. */
@@ -206,23 +274,23 @@ export const useDogStore = create((set, get) => ({
     const pw = typeof password === 'string' ? password : '';
     if (!em || !pw) return false;
     try {
-      const res = await fetch(`${API_URL}/auth/login`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: em, password: pw }),
+      // Prefer email/password contract (typical SQL auth backend),
+      // then fallback to Firebase idToken contract for legacy compatibility.
+      let authRes = await postBackendAuth('/auth/login', {
+        email: em,
+        password: pw,
       });
-      if (!res.ok) return false;
-      const data = await res.json();
-      const uid = typeof data.uid === 'string' ? data.uid.trim() : '';
-      const jwt = typeof data.token === 'string' ? data.token.trim() : '';
-      if (!uid || !jwt) return false;
-      set({ userId: uid, authToken: jwt });
+      if (!authRes.ok && authRes.status === 400) {
+        const idToken = await firebaseAuthEmailPassword('login', em, pw);
+        if (!idToken) return false;
+        authRes = await postBackendAuth('/auth/login', { idToken });
+      }
+      if (!authRes.ok) return false;
+      const { uid, token, pseudo } = normalizeAuthPayload(authRes.data);
+      if (!uid) return false;
+      set({ userId: uid, authToken: token });
       await setBackendUserId(uid);
-      await setAuthToken(jwt);
-      const pseudo =
-        typeof data.pseudo === 'string' && data.pseudo.trim()
-          ? data.pseudo.trim()
-          : '';
+      await setAuthToken(token);
       await cacheSessionUser({
         uid,
         email: em,
@@ -240,23 +308,25 @@ export const useDogStore = create((set, get) => ({
     const pseudoTrimmed = typeof pseudo === 'string' ? pseudo.trim() : '';
     if (!em || !pw || !pseudoTrimmed) return false;
     try {
-      const res = await fetch(`${API_URL}/auth/register`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          email: em,
-          password: pw,
-          pseudo: pseudoTrimmed,
-        }),
+      let authRes = await postBackendAuth('/auth/register', {
+        email: em,
+        password: pw,
+        pseudo: pseudoTrimmed,
       });
-      if (!res.ok) return false;
-      const data = await res.json();
-      const uid = typeof data.uid === 'string' ? data.uid.trim() : '';
-      const jwt = typeof data.token === 'string' ? data.token.trim() : '';
-      if (!uid || !jwt) return false;
-      set({ userId: uid, authToken: jwt });
+      if (!authRes.ok && authRes.status === 400) {
+        const idToken = await firebaseAuthEmailPassword('register', em, pw);
+        if (!idToken) return false;
+        authRes = await postBackendAuth('/auth/register', {
+          idToken,
+          pseudo: pseudoTrimmed,
+        });
+      }
+      if (!authRes.ok) return false;
+      const { uid, token } = normalizeAuthPayload(authRes.data);
+      if (!uid) return false;
+      set({ userId: uid, authToken: token });
       await setBackendUserId(uid);
-      await setAuthToken(jwt);
+      await setAuthToken(token);
       await cacheSessionUser({
         uid,
         email: em,
