@@ -1,8 +1,8 @@
 import { isSetupComplete } from "@/lib/local-session";
 import { Image } from "expo-image";
 import { router } from "expo-router";
-import { useEffect, useState } from "react";
-import { Pressable, StyleSheet, Text, useWindowDimensions, View } from "react-native";
+import { useEffect, useRef, useState } from "react";
+import { Animated, Easing, Pressable, StyleSheet, Text, useWindowDimensions, View } from "react-native";
 import Svg, { Circle } from "react-native-svg";
 
 type SlideConfig = {
@@ -56,7 +56,9 @@ function clamp(value: number, min: number, max: number) {
 
 export default function CheckupScreen() {
   const [step, setStep] = useState(0);
+  const [isTransitioning, setIsTransitioning] = useState(false);
   const { height: screenHeight, width: screenWidth } = useWindowDimensions();
+  const fadeAnim = useRef(new Animated.Value(1)).current;
 
   useEffect(() => {
     let cancelled = false;
@@ -87,37 +89,63 @@ export default function CheckupScreen() {
   const buttonBottom = clamp(screenHeight * 0.06, 34, 56);
 
   function onNext() {
+    if (isTransitioning) return;
     if (isLast) {
       router.replace("/setup-dog");
       return;
     }
-    setStep((v) => Math.min(SLIDES.length - 1, v + 1));
+    setIsTransitioning(true);
+    Animated.timing(fadeAnim, {
+      toValue: 0,
+      duration: 120,
+      easing: Easing.out(Easing.quad),
+      useNativeDriver: true,
+    }).start(() => {
+      setStep((v) => Math.min(SLIDES.length - 1, v + 1));
+      Animated.timing(fadeAnim, {
+        toValue: 1,
+        duration: 140,
+        easing: Easing.in(Easing.quad),
+        useNativeDriver: true,
+      }).start(() => {
+        setIsTransitioning(false);
+      });
+    });
   }
 
   return (
     <View style={[styles.screen, { width: screenWidth, height: screenHeight }]}>
-      <Image source={require("../assets/images/pawbackground.svg")} style={styles.backgroundPawPattern} contentFit="cover" />
-
       <Image
-        source={currentSlide.image}
-        style={[
-          styles.slideImage,
-          {
-            top: slideImageTop,
-            width: slideImageWidth,
-            height: slideImageHeight,
-            left: slideImageLeft,
-          },
-        ]}
-        contentFit="contain"
+        source={require("../assets/images/pawbackground.svg")}
+        style={styles.backgroundPawPattern}
+        contentFit="cover"
+        transition={0}
       />
 
-      <View style={[styles.slideContent, { marginTop: contentTop }]}>
-        <View style={styles.slideCard}>
-          <Text style={styles.slideTitle}>{currentSlide.title}</Text>
-          <Text style={styles.slideText}>{currentSlide.text}</Text>
+      <Animated.View style={[styles.slideAnimatedLayer, { opacity: fadeAnim }]}>
+        <Image
+          key={`slide-image-${step}`}
+          source={currentSlide.image}
+          style={[
+            styles.slideImage,
+            {
+              top: slideImageTop,
+              width: slideImageWidth,
+              height: slideImageHeight,
+              left: slideImageLeft,
+            },
+          ]}
+          contentFit="contain"
+          transition={0}
+        />
+
+        <View style={[styles.slideContent, { marginTop: contentTop }]}>
+          <View style={styles.slideCard}>
+            <Text style={styles.slideTitle}>{currentSlide.title}</Text>
+            <Text style={styles.slideText}>{currentSlide.text}</Text>
+          </View>
         </View>
-      </View>
+      </Animated.View>
 
       <View style={[styles.slideButtonWrap, { bottom: buttonBottom }]}>
         <Svg width={BUTTON_RING_SIZE} height={BUTTON_RING_SIZE} viewBox={`0 0 ${BUTTON_RING_SIZE} ${BUTTON_RING_SIZE}`} style={styles.slideButtonArc}>
@@ -133,7 +161,7 @@ export default function CheckupScreen() {
             transform={`rotate(-90 ${BUTTON_RING_SIZE / 2} ${BUTTON_RING_SIZE / 2})`}
           />
         </Svg>
-        <Pressable style={styles.slideArrowButton} onPress={onNext}>
+        <Pressable style={styles.slideArrowButton} onPress={onNext} disabled={isTransitioning}>
           <Text style={styles.slideArrowLabel}>→</Text>
         </Pressable>
       </View>
@@ -159,6 +187,9 @@ const styles = StyleSheet.create({
   slideImage: {
     position: "absolute",
     opacity: 1,
+  },
+  slideAnimatedLayer: {
+    ...StyleSheet.absoluteFillObject,
   },
   slideContent: {
     width: "100%",
