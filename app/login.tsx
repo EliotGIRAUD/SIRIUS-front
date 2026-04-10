@@ -9,7 +9,7 @@ import { useEffect, useState } from "react";
 import { ActivityIndicator, Alert, Pressable, StyleSheet, Text, TextInput, View } from "react-native";
 import { AntDesign, FontAwesome, Ionicons } from "@expo/vector-icons";
 
-const LOGIN_BACKGROUND_PATTERN_OPACITY = 0.8;
+const LOGIN_BACKGROUND_PATTERN_OPACITY = 0.7;
 
 export default function LoginScreen() {
   const { mode: modeParam } = useLocalSearchParams<{ mode?: string }>();

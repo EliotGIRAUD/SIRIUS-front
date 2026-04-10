@@ -2,9 +2,12 @@ import { GameTabBar } from '@/components/game-tab-bar';
 import { ThemedText } from '@/components/themed-text';
 import { useDogStore } from '@/hooks/useDogStore';
 import { useThemedStyles } from '@/hooks/use-themed-styles';
+import { Image } from 'expo-image';
 import { useMemo, useState } from 'react';
-import { Alert, Pressable, ScrollView, Text, View } from 'react-native';
+import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+
+const SHOP_BACKGROUND_PATTERN_OPACITY = 0.7;
 
 const ITEMS = [
   { id: 'croquettes', label: 'Croquettes', priceGold: 20 },
@@ -43,8 +46,14 @@ export default function ShopScreen() {
   );
 
   return (
-    <View style={[s.tabScreen, { paddingTop: insets.top }]}>
-      <View style={s.settingsContent}>
+    <View style={[s.tabScreen, styles.screen, { paddingTop: insets.top }]}>
+      <Image
+        source={require('../../assets/images/pawbackground.svg')}
+        style={[styles.backgroundPawPattern, { opacity: SHOP_BACKGROUND_PATTERN_OPACITY }]}
+        contentFit="cover"
+        transition={0}
+      />
+      <View style={[s.settingsContent, styles.content]}>
         <ThemedText type="title" style={s.settingsTitle}>
           {header.title}
         </ThemedText>
@@ -167,4 +176,16 @@ export default function ShopScreen() {
     </View>
   );
 }
+
+const styles = StyleSheet.create({
+  screen: {
+    overflow: 'hidden',
+  },
+  backgroundPawPattern: {
+    ...StyleSheet.absoluteFillObject,
+  },
+  content: {
+    zIndex: 1,
+  },
+});
 

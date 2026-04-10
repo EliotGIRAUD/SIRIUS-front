@@ -8,7 +8,7 @@ import { useState } from "react";
 import { ActivityIndicator, Alert, StyleSheet, Pressable, Text, TextInput, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 
-const SETUP_DOG_BACKGROUND_PATTERN_OPACITY = 0.8;
+const SETUP_DOG_BACKGROUND_PATTERN_OPACITY = 0.7;
 
 const GOLDEN_URL = "https://images.unsplash.com/photo-1552053831-71594a27632d?w=600&q=80";
 const BREEDS = [
