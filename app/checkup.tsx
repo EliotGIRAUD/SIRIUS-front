@@ -9,6 +9,7 @@ type SlideConfig = {
   title: string;
   text: string;
   image: number;
+  backgroundOpacity: number;
   imageSide: "left" | "right";
   imageTopRatio: number;
   imageOffsetRatio: number;
@@ -20,6 +21,7 @@ const SLIDES: SlideConfig[] = [
     title: "Prêt pour\nl'aventure ?",
     text: "Adopter un chien, c'est bien plus qu'un coup de cœur. C'est une promesse de vie quotidienne et d'amour à partager.",
     image: require("../assets/images/browndogleft.svg"),
+    backgroundOpacity: 0.3,
     imageSide: "left",
     imageTopRatio: 0.04,
     imageOffsetRatio: 0.16,
@@ -29,6 +31,7 @@ const SLIDES: SlideConfig[] = [
     title: "30 jours pour\ntout comprendre",
     text: "Budget, balades, imprévus...\nVis la vraie vie avant d'adopter.",
     image: require("../assets/images/browndogright.svg"),
+    backgroundOpacity: 0.3,
     imageSide: "right",
     imageTopRatio: 0.05,
     imageOffsetRatio: 0.16,
@@ -38,6 +41,7 @@ const SLIDES: SlideConfig[] = [
     title: "Apprivoise\navant d'adopter",
     text: "Tu deviens responsable pour toujours.\nCommence ta simulation maintenant.",
     image: require("../assets/images/whitedogleft.svg"),
+    backgroundOpacity: 0.3,
     imageSide: "left",
     imageTopRatio: 0.04,
     imageOffsetRatio: 0.14,
@@ -117,7 +121,7 @@ export default function CheckupScreen() {
     <View style={[styles.screen, { width: screenWidth, height: screenHeight }]}>
       <Image
         source={require("../assets/images/pawbackground.svg")}
-        style={styles.backgroundPawPattern}
+        style={[styles.backgroundPawPattern, { opacity: currentSlide.backgroundOpacity }]}
         contentFit="cover"
         transition={0}
       />
@@ -182,7 +186,6 @@ const styles = StyleSheet.create({
   },
   backgroundPawPattern: {
     ...StyleSheet.absoluteFillObject,
-    opacity: 0.22,
   },
   slideImage: {
     position: "absolute",
