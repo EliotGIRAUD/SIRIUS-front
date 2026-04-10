@@ -1,35 +1,35 @@
 import { useDogStore } from '@/hooks/useDogStore';
 import { useThemedStyles } from '@/hooks/use-themed-styles';
-import { getFirebaseAuth } from '@/lib/firebase';
-import { cacheFirebaseUser, isSetupComplete, setSetupComplete } from '@/lib/local-session';
+import { isSetupComplete, setSetupComplete } from '@/lib/local-session';
 import { Redirect } from 'expo-router';
-import { onAuthStateChanged } from 'firebase/auth';
 import { useEffect, useState } from 'react';
 import { ActivityIndicator, Text, View } from 'react-native';
 
 type Gate = 'boot' | 'login' | 'checkup' | 'setupDog' | 'tabs';
+
+type DogStoreState = {
+  hydrateUserIdFromStorage: () => Promise<void>;
+  userId: string;
+  fetchDog: () => Promise<boolean | null>;
+};
+
+function dogStore(): DogStoreState {
+  return useDogStore.getState() as DogStoreState;
+}
 
 export default function Index() {
   const [gate, setGate] = useState<Gate>('boot');
   const { colors: c, styles: s } = useThemedStyles();
 
   useEffect(() => {
-    const auth = getFirebaseAuth();
-    if (!auth) {
-      setGate('login');
-      return;
-    }
-
-    const unsub = onAuthStateChanged(auth, async (user) => {
-      if (!user) {
+    (async () => {
+      await dogStore().hydrateUserIdFromStorage();
+      const userId = dogStore().userId;
+      if (!userId) {
         setGate('login');
         return;
       }
-      await cacheFirebaseUser(user);
-      await useDogStore.getState().hydrateUserIdFromStorage();
-      const idToken = await user.getIdToken();
-      await useDogStore.getState().authApiLogin({ idToken });
-      const hasDog = await useDogStore.getState().fetchDog();
+      const hasDog = await dogStore().fetchDog();
       let next: Gate;
       if (hasDog === null) {
         next = (await isSetupComplete()) ? 'tabs' : 'checkup';
@@ -42,9 +42,7 @@ export default function Index() {
         }
       }
       setGate(next);
-    });
-
-    return unsub;
+    })();
   }, []);
 
   if (gate === 'boot') {

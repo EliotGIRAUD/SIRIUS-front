@@ -1,8 +1,6 @@
 import { useThemedStyles } from '@/hooks/use-themed-styles';
 import { useDogStore } from '@/hooks/useDogStore';
-import { getFirebaseAuth } from '@/lib/firebase';
-import { cacheFirebaseUser, isSetupComplete, setSetupComplete } from '@/lib/local-session';
-import { createUserWithEmailAndPassword, onAuthStateChanged, signInWithEmailAndPassword } from 'firebase/auth';
+import { isSetupComplete, setSetupComplete } from '@/lib/local-session';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useState } from 'react';
 import {
@@ -13,6 +11,16 @@ import {
   TextInput,
   View,
 } from 'react-native';
+
+type DogStoreState = {
+  fetchDog: () => Promise<boolean | null>;
+  authApiLogin: (p: { email: string; password: string }) => Promise<boolean>;
+  authApiRegister: (p: { email: string; password: string; pseudo: string }) => Promise<boolean>;
+};
+
+function dogStore(): DogStoreState {
+  return useDogStore.getState() as DogStoreState;
+}
 
 export default function LoginScreen() {
   const { mode: modeParam } = useLocalSearchParams<{ mode?: string }>();
@@ -33,60 +41,32 @@ export default function LoginScreen() {
     }
   }, [modeParam]);
 
-  useEffect(() => {
-    const auth = getFirebaseAuth();
-    if (!auth) return;
-    const unsub = onAuthStateChanged(auth, async (user) => {
-      if (!user) return;
-      await cacheFirebaseUser(user);
-      await useDogStore.getState().hydrateUserIdFromStorage();
-      const idToken = await user.getIdToken();
-      await useDogStore.getState().authApiLogin({ idToken });
-      const hasDog = await useDogStore.getState().fetchDog();
-      if (hasDog === null) {
-        router.replace((await isSetupComplete()) ? '/(tabs)' : '/checkup');
+  async function afterAuth() {
+    const hasDog = await dogStore().fetchDog();
+    if (hasDog === null) {
+      router.replace((await isSetupComplete()) ? '/(tabs)' : '/checkup');
+    } else {
+      if (hasDog) {
+        await setSetupComplete(true);
+        router.replace('/(tabs)');
       } else {
-        if (hasDog) {
-          await setSetupComplete(true);
-          router.replace('/(tabs)');
-        } else {
-          router.replace((await isSetupComplete()) ? '/setup-dog' : '/checkup');
-        }
+        router.replace((await isSetupComplete()) ? '/setup-dog' : '/checkup');
       }
-    });
-    return unsub;
-  }, []);
+    }
+  }
 
   async function onLogin() {
-    const auth = getFirebaseAuth();
-    if (!auth) {
-      Alert.alert('Configuration', 'Définir les variables EXPO_PUBLIC_FIREBASE_* dans .env');
-      return;
-    }
     setLoading(true);
     try {
-      const cred = await signInWithEmailAndPassword(auth, email.trim(), password);
-      await cacheFirebaseUser(cred.user);
-      const idToken = await cred.user.getIdToken();
-      const apiOk = await useDogStore.getState().authApiLogin({ idToken });
+      const apiOk = await dogStore().authApiLogin({ email: email.trim(), password });
       if (!apiOk) {
         Alert.alert(
-          'Serveur',
-          'Impossible de joindre POST /auth/login. Vérifie que l’API tourne et EXPO_PUBLIC_API_URL.',
+          'Connexion',
+          'E-mail ou mot de passe incorrect, ou impossible de joindre POST /auth/login (API et EXPO_PUBLIC_API_URL).',
         );
         return;
       }
-      const hasDog = await useDogStore.getState().fetchDog();
-      if (hasDog === null) {
-        router.replace((await isSetupComplete()) ? '/(tabs)' : '/checkup');
-      } else {
-        if (hasDog) {
-          await setSetupComplete(true);
-          router.replace('/(tabs)');
-        } else {
-          router.replace((await isSetupComplete()) ? '/setup-dog' : '/checkup');
-        }
-      }
+      await afterAuth();
     } catch (e) {
       Alert.alert('Connexion', e instanceof Error ? e.message : 'Erreur');
     } finally {
@@ -95,11 +75,6 @@ export default function LoginScreen() {
   }
 
   async function onRegister() {
-    const auth = getFirebaseAuth();
-    if (!auth) {
-      Alert.alert('Configuration', 'Définir les variables EXPO_PUBLIC_FIREBASE_* dans .env');
-      return;
-    }
     const pseudoTrimmed = pseudo.trim();
     if (!pseudoTrimmed) {
       Alert.alert('Pseudo', 'Indiquer un pseudo (string non vide)');
@@ -107,28 +82,19 @@ export default function LoginScreen() {
     }
     setLoading(true);
     try {
-      const cred = await createUserWithEmailAndPassword(auth, email.trim(), password);
-      await cacheFirebaseUser(cred.user);
-      const idToken = await cred.user.getIdToken();
-      const apiOk = await useDogStore.getState().authApiRegister({ idToken, pseudo: pseudoTrimmed });
+      const apiOk = await dogStore().authApiRegister({
+        email: email.trim(),
+        password,
+        pseudo: pseudoTrimmed,
+      });
       if (!apiOk) {
         Alert.alert(
-          'Serveur',
-          'Impossible de joindre POST /auth/register. Vérifie que l’API tourne et EXPO_PUBLIC_API_URL.',
+          'Inscription',
+          'Compte déjà existant ou impossible de joindre POST /auth/register (API et EXPO_PUBLIC_API_URL).',
         );
         return;
       }
-      const hasDog = await useDogStore.getState().fetchDog();
-      if (hasDog === null) {
-        router.replace((await isSetupComplete()) ? '/(tabs)' : '/checkup');
-      } else {
-        if (hasDog) {
-          await setSetupComplete(true);
-          router.replace('/(tabs)');
-        } else {
-          router.replace((await isSetupComplete()) ? '/setup-dog' : '/checkup');
-        }
-      }
+      await afterAuth();
     } catch (e) {
       Alert.alert('Inscription', e instanceof Error ? e.message : 'Erreur');
     } finally {
