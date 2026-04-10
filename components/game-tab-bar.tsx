@@ -121,15 +121,19 @@ export function GameTabBar() {
           />
         </Pressable>
         <Pressable
-          style={({ pressed }) => [s.gameTabGaugeItem, pressed && s.gameTabItemPressed]}
+          style={({ pressed }) => [
+            s.gameTabGaugeItem,
+            s.gameTabGaugeItemFeatured,
+            pressed && s.gameTabItemPressed,
+          ]}
           onPress={onFoodPress}
           accessibilityRole="button">
           <View style={[s.gameTabGaugeFillFood, { height: `${foodPct}%` }]} />
           <MaterialIcons
             name="restaurant"
             size={Layout.tabBarIconSize}
-            color={c.tabBarLabel}
-            style={s.gameTabGaugeIcon}
+            color={c.buttonPrimaryText}
+            style={[s.gameTabGaugeIcon, s.gameTabGaugeIconFeatured]}
           />
         </Pressable>
         <Pressable
